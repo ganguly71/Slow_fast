@@ -19,17 +19,9 @@ def send_async_email(app, params):
             print("[Mail Service] Troubleshooting Tip: If you are using Resend's free/sandbox tier, make sure the recipient email is the one you signed up with.")
 
 def send_remedial_notification(faculty_email, student_name, subject, marks, remedial_date):
-    # Support overriding the recipient email for Resend sandbox mode
-    to_email = os.environ.get('RESEND_TO_EMAIL')
-    if to_email:
-        recipient = to_email
-        print(f"[Mail Service] Overriding recipient to Resend verified email: {recipient}")
-    else:
-        recipient = faculty_email
-
     params = {
         "from": "Academics <onboarding@resend.dev>",
-        "to": [recipient],
+        "to": [faculty_email],
         "subject": "Remedial Class Scheduled",
         "html": f"""
         <p>Hello,</p>
