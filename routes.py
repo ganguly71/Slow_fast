@@ -112,7 +112,7 @@ def delete_student(student_id):
 @main.route('/students/import', methods=['POST'])
 @login_required
 def import_students():
-    import pandas as pd
+    import csv
     import io
     
     file = request.files.get('file')
@@ -121,11 +121,18 @@ def import_students():
         return redirect(url_for('main.manage_students'))
         
     filename = file.filename.lower()
+    rows = []
+    
     try:
         if filename.endswith('.csv'):
-            df = pd.read_csv(io.BytesIO(file.read()))
+            stream = io.StringIO(file.read().decode("utf8"), newline=None)
+            reader = csv.reader(stream)
+            rows = list(reader)
         elif filename.endswith(('.xls', '.xlsx')):
-            df = pd.read_excel(io.BytesIO(file.read()))
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(file.read()), data_only=True)
+            sheet = wb.active
+            rows = [[cell.value for cell in row] for row in sheet.iter_rows()]
         else:
             flash('Unsupported file format. Please upload an Excel (.xlsx) or CSV file.', 'danger')
             return redirect(url_for('main.manage_students'))
@@ -133,37 +140,48 @@ def import_students():
         flash(f'Error reading file: {str(e)}', 'danger')
         return redirect(url_for('main.manage_students'))
         
-    df.columns = [str(c).strip().lower() for c in df.columns]
+    if not rows or len(rows) < 2:
+        flash('The file is empty or missing data.', 'danger')
+        return redirect(url_for('main.manage_students'))
+        
+    # Get header and clean it
+    headers = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
+    data_rows = rows[1:]
     
     col_mapping = {}
-    for col in df.columns:
+    for idx, col in enumerate(headers):
         if col in ['name', 'student name', 'student_name']:
-            col_mapping['name'] = col
+            col_mapping['name'] = idx
         elif col in ['roll', 'roll no', 'roll_no', 'rollno', 'roll number']:
-            col_mapping['roll_no'] = col
+            col_mapping['roll_no'] = idx
         elif col in ['sem', 'semester']:
-            col_mapping['semester'] = col
+            col_mapping['semester'] = idx
         elif col in ['dept', 'department', 'branch']:
-            col_mapping['department'] = col
+            col_mapping['department'] = idx
             
     required_cols = ['name', 'roll_no', 'semester', 'department']
     missing = [col for col in required_cols if col not in col_mapping]
     
     if missing:
-        flash(f'Missing required columns in sheet: {", ".join(missing)}. Detected columns: {", ".join(df.columns)}', 'danger')
+        flash(f'Missing required columns in sheet: {", ".join(missing)}. Detected columns: {", ".join(headers)}', 'danger')
         return redirect(url_for('main.manage_students'))
         
     added_count = 0
     updated_count = 0
     
-    for _, row in df.iterrows():
-        name_val = str(row[col_mapping['name']]).strip()
-        roll_val = str(row[col_mapping['roll_no']]).strip()
+    for row in data_rows:
+        if len(row) <= max(col_mapping.values()):
+            continue
+            
+        name_val = str(row[col_mapping['name']]).strip() if row[col_mapping['name']] is not None else ""
+        roll_val = str(row[col_mapping['roll_no']]).strip() if row[col_mapping['roll_no']] is not None else ""
+        
         try:
-            sem_val = int(float(row[col_mapping['semester']]))
-        except ValueError:
+            sem_val = int(float(str(row[col_mapping['semester']]).strip()))
+        except (ValueError, TypeError):
             sem_val = 1
-        dept_val = str(row[col_mapping['department']]).strip()
+            
+        dept_val = str(row[col_mapping['department']]).strip() if row[col_mapping['department']] is not None else ""
         
         if not name_val or not roll_val:
             continue
