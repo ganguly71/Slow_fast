@@ -2,7 +2,6 @@ import os
 from flask import Flask
 from models import db, User
 from flask_login import LoginManager
-from mail_service import mail
 
 def create_app():
     app = Flask(__name__)
@@ -15,16 +14,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Email configurations
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'your_email@gmail.com')
-    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'your_app_password')
-    app.config['MAIL_DEFAULT_SENDER'] = app.config['MAIL_USERNAME']
-
     db.init_app(app)
-    mail.init_app(app)
 
     login_manager = LoginManager()
     login_manager.login_view = 'main.login'
