@@ -78,6 +78,111 @@ def manage_students():
     students = Student.query.all()
     return render_template('manage_students.html', students=students)
 
+@main.route('/students/edit/<int:student_id>', methods=['POST'])
+@login_required
+def edit_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    name = request.form.get('name')
+    roll_no = request.form.get('roll_no')
+    semester = request.form.get('semester')
+    department = request.form.get('department')
+    
+    existing = Student.query.filter(Student.roll_no == roll_no, Student.id != student_id).first()
+    if existing:
+        flash('Another student already has this Roll No.', 'danger')
+    else:
+        student.name = name
+        student.roll_no = roll_no
+        student.semester = int(semester)
+        student.department = department
+        db.session.commit()
+        flash('Student details updated successfully.', 'success')
+        
+    return redirect(url_for('main.manage_students'))
+
+@main.route('/students/delete/<int:student_id>', methods=['POST'])
+@login_required
+def delete_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    db.session.delete(student)
+    db.session.commit()
+    flash('Student deleted successfully.', 'success')
+    return redirect(url_for('main.manage_students'))
+
+@main.route('/students/import', methods=['POST'])
+@login_required
+def import_students():
+    import pandas as pd
+    import io
+    
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        flash('No file selected.', 'danger')
+        return redirect(url_for('main.manage_students'))
+        
+    filename = file.filename.lower()
+    try:
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(file.read()))
+        elif filename.endswith(('.xls', '.xlsx')):
+            df = pd.read_excel(io.BytesIO(file.read()))
+        else:
+            flash('Unsupported file format. Please upload an Excel (.xlsx) or CSV file.', 'danger')
+            return redirect(url_for('main.manage_students'))
+    except Exception as e:
+        flash(f'Error reading file: {str(e)}', 'danger')
+        return redirect(url_for('main.manage_students'))
+        
+    df.columns = [str(c).strip().lower() for c in df.columns]
+    
+    col_mapping = {}
+    for col in df.columns:
+        if col in ['name', 'student name', 'student_name']:
+            col_mapping['name'] = col
+        elif col in ['roll', 'roll no', 'roll_no', 'rollno', 'roll number']:
+            col_mapping['roll_no'] = col
+        elif col in ['sem', 'semester']:
+            col_mapping['semester'] = col
+        elif col in ['dept', 'department', 'branch']:
+            col_mapping['department'] = col
+            
+    required_cols = ['name', 'roll_no', 'semester', 'department']
+    missing = [col for col in required_cols if col not in col_mapping]
+    
+    if missing:
+        flash(f'Missing required columns in sheet: {", ".join(missing)}. Detected columns: {", ".join(df.columns)}', 'danger')
+        return redirect(url_for('main.manage_students'))
+        
+    added_count = 0
+    updated_count = 0
+    
+    for _, row in df.iterrows():
+        name_val = str(row[col_mapping['name']]).strip()
+        roll_val = str(row[col_mapping['roll_no']]).strip()
+        try:
+            sem_val = int(float(row[col_mapping['semester']]))
+        except ValueError:
+            sem_val = 1
+        dept_val = str(row[col_mapping['department']]).strip()
+        
+        if not name_val or not roll_val:
+            continue
+            
+        student = Student.query.filter_by(roll_no=roll_val).first()
+        if student:
+            student.name = name_val
+            student.semester = sem_val
+            student.department = dept_val
+            updated_count += 1
+        else:
+            new_student = Student(name=name_val, roll_no=roll_val, semester=sem_val, department=dept_val)
+            db.session.add(new_student)
+            added_count += 1
+            
+    db.session.commit()
+    flash(f'Successfully imported students: {added_count} added, {updated_count} updated.', 'success')
+    return redirect(url_for('main.manage_students'))
+
 @main.route('/faculty', methods=['GET', 'POST'])
 @login_required
 def manage_faculty():
