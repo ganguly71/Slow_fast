@@ -106,6 +106,59 @@ def manage_faculty():
     faculty = User.query.all()
     return render_template('manage_faculty.html', faculty=faculty, subjects=SUBJECTS)
 
+@main.route('/faculty/edit/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_faculty(user_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        role = request.form.get('role', 'faculty')
+        selected_subjects = request.form.getlist('subjects')
+        password = request.form.get('password')
+        
+        # Check if email is already taken by another user
+        existing_user = User.query.filter(User.email == email, User.id != user_id).first()
+        if existing_user:
+            flash('Another user with this email already exists.', 'warning')
+        else:
+            user.name = name
+            user.email = email
+            if user.id != current_user.id:  # Protect current admin from losing admin role
+                user.role = role
+            user.set_subjects(selected_subjects)
+            
+            if password:
+                user.set_password(password)
+                
+            db.session.commit()
+            flash('Faculty details updated successfully.', 'success')
+            return redirect(url_for('main.manage_faculty'))
+            
+    return render_template('edit_faculty.html', user=user, subjects=SUBJECTS)
+
+@main.route('/faculty/delete/<int:user_id>', methods=['POST'])
+@login_required
+def delete_faculty(user_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        flash('You cannot delete your own account.', 'danger')
+    else:
+        db.session.delete(user)
+        db.session.commit()
+        flash('Faculty deleted successfully.', 'success')
+        
+    return redirect(url_for('main.manage_faculty'))
+
 def get_next_available_slot():
     # Schedule remedial 3 days from now for simplicity
     return datetime.utcnow() + timedelta(days=3)
