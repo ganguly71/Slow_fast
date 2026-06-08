@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Remedial Class Schedules</h5>
+                <p class="text-muted">These are automatically generated when a student scores below the 50 marks threshold.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Schedule ID</th>
+                                <th>Date & Time</th>
+                                <th>Student (Roll No)</th>
+                                <th>Subject</th>
+                                <th>Assigned Faculty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.id }}</td>
+                                <td><strong>{{ schedule.date.strftime('%Y-%m-%d %H:%M') }}</strong></td>
+                                <td>{{ schedule.student.name }} ({{ schedule.student.roll_no }})</td>
+                                <td>{{ schedule.subject }}</td>
+                                <td>{{ schedule.faculty.name }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No remedial classes scheduled at this time.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

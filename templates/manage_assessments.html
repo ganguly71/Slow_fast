@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Add Assessment Marks</h5>
+                <form method="POST" action="{{ url_for('main.manage_assessments') }}">
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">Student</label>
+                        <select class="form-select" id="student_id" name="student_id" required>
+                            <option value="">Select a student...</option>
+                            {% for student in students %}
+                            <option value="{{ student.id }}">{{ student.roll_no }} - {{ student.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="subject" class="form-label">Subject</label>
+                        <input type="text" class="form-control" id="subject" name="subject" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="marks" class="form-label">Marks (out of 100)</label>
+                        <input type="number" step="0.1" class="form-control" id="marks" name="marks" required>
+                        <div class="form-text">Threshold for Fast Learner is 50.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Assessment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Recent Assessments</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Student</th>
+                                <th>Subject</th>
+                                <th>Marks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assessment in assessments %}
+                            <tr>
+                                <td>{{ assessment.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ assessment.student.name }}</td>
+                                <td>{{ assessment.subject }}</td>
+                                <td>
+                                    {{ assessment.marks }}
+                                    {% if assessment.marks < 50 %}
+                                    <span class="badge bg-warning text-dark">Slow</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Fast</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No assessments found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

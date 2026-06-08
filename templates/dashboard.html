@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Dashboard</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-info text-white text-center">
+            <div class="card-body">
+                <h5 class="card-title">Total Students</h5>
+                <h2 class="display-4">{{ total_students }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white text-center">
+            <div class="card-body">
+                <h5 class="card-title">Fast Learners</h5>
+                <h2 class="display-4">{{ fast_learners }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark text-center">
+            <div class="card-body">
+                <h5 class="card-title">Slow Learners</h5>
+                <h2 class="display-4">{{ slow_learners }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white text-center">
+            <div class="card-body">
+                <h5 class="card-title">Upcoming Remedials</h5>
+                <h2 class="display-4">{{ upcoming_remedials }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Learner Distribution</h5>
+                <canvas id="learnerChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('learnerChart').getContext('2d');
+    var learnerChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Fast Learners', 'Slow Learners'],
+            datasets: [{
+                data: [{{ fast_learners }}, {{ slow_learners }}],
+                backgroundColor: ['#198754', '#ffc107'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+});
+</script>
+{% endblock %}
