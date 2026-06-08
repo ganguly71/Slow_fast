@@ -6,23 +6,38 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title">Add Assessment Marks</h5>
-                <form method="POST" action="{{ url_for('main.manage_assessments') }}">
+                <form method="POST" action="{{ url_for('main.manage_assessments') }}" id="assessmentForm">
+                    
+                    <!-- Roll Number Search -->
                     <div class="mb-3">
-                        <label for="student_id" class="form-label">Student</label>
-                        <select class="form-select" id="student_id" name="student_id" required>
-                            <option value="">Select a student...</option>
-                            {% for student in students %}
-                            <option value="{{ student.id }}">{{ student.roll_no }} - {{ student.name }}</option>
+                        <label for="roll_no_search" class="form-label">Student Roll No</label>
+                        <input type="text" class="form-control" id="roll_no_search" placeholder="Type roll number to search..." autocomplete="off" required>
+                        <input type="hidden" id="student_id" name="student_id" required>
+                        <div id="search_results" class="list-group mt-1" style="position:absolute; z-index:100; width:calc(100% - 2rem);"></div>
+                    </div>
+                    
+                    <!-- Selected Student Display -->
+                    <div class="mb-3" id="selected_student_box" style="display:none;">
+                        <div class="alert alert-info py-2 mb-0 d-flex justify-content-between align-items-center">
+                            <span id="selected_student_text"></span>
+                            <button type="button" class="btn-close btn-sm" id="clear_student"></button>
+                        </div>
+                    </div>
+
+                    <!-- Subject Dropdown -->
+                    <div class="mb-3">
+                        <label for="subject" class="form-label">Subject</label>
+                        <select class="form-select" id="subject" name="subject" required>
+                            <option value="">Select a subject...</option>
+                            {% for subj in subjects %}
+                            <option value="{{ subj }}">{{ subj }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="subject" class="form-label">Subject</label>
-                        <input type="text" class="form-control" id="subject" name="subject" required>
-                    </div>
+
                     <div class="mb-3">
                         <label for="marks" class="form-label">Marks (out of 100)</label>
-                        <input type="number" step="0.1" class="form-control" id="marks" name="marks" required>
+                        <input type="number" step="0.1" min="0" max="100" class="form-control" id="marks" name="marks" required>
                         <div class="form-text">Threshold for Fast Learner is 50.</div>
                     </div>
                     <button type="submit" class="btn btn-primary">Submit Assessment</button>
@@ -41,6 +56,7 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Student</th>
+                                <th>Roll No</th>
                                 <th>Subject</th>
                                 <th>Marks</th>
                             </tr>
@@ -50,6 +66,7 @@
                             <tr>
                                 <td>{{ assessment.date.strftime('%Y-%m-%d') }}</td>
                                 <td>{{ assessment.student.name }}</td>
+                                <td>{{ assessment.student.roll_no }}</td>
                                 <td>{{ assessment.subject }}</td>
                                 <td>
                                     {{ assessment.marks }}
@@ -62,7 +79,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4" class="text-center">No assessments found.</td>
+                                <td colspan="5" class="text-center">No assessments found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -72,4 +89,83 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rollInput = document.getElementById('roll_no_search');
+    const studentIdInput = document.getElementById('student_id');
+    const resultsDiv = document.getElementById('search_results');
+    const selectedBox = document.getElementById('selected_student_box');
+    const selectedText = document.getElementById('selected_student_text');
+    const clearBtn = document.getElementById('clear_student');
+    const form = document.getElementById('assessmentForm');
+    let debounceTimer;
+
+    rollInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        
+        if (query.length < 1) {
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        debounceTimer = setTimeout(function() {
+            fetch('{{ url_for("main.search_student") }}?roll_no=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    resultsDiv.innerHTML = '';
+                    if (data.length === 0) {
+                        resultsDiv.innerHTML = '<div class="list-group-item text-muted">No student found</div>';
+                        return;
+                    }
+                    data.forEach(function(student) {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = '<strong>' + student.roll_no + '</strong> — ' + student.name;
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            selectStudent(student);
+                        });
+                        resultsDiv.appendChild(item);
+                    });
+                });
+        }, 300);
+    });
+
+    function selectStudent(student) {
+        studentIdInput.value = student.id;
+        rollInput.value = student.roll_no;
+        rollInput.readOnly = true;
+        selectedText.textContent = student.roll_no + ' — ' + student.name;
+        selectedBox.style.display = 'block';
+        resultsDiv.innerHTML = '';
+    }
+
+    clearBtn.addEventListener('click', function() {
+        studentIdInput.value = '';
+        rollInput.value = '';
+        rollInput.readOnly = false;
+        selectedBox.style.display = 'none';
+        rollInput.focus();
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!rollInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.innerHTML = '';
+        }
+    });
+
+    // Validate form before submit
+    form.addEventListener('submit', function(e) {
+        if (!studentIdInput.value) {
+            e.preventDefault();
+            alert('Please search and select a student by roll number.');
+            rollInput.focus();
+        }
+    });
+});
+</script>
 {% endblock %}
