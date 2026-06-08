@@ -1,35 +1,45 @@
 import os
-import resend
+import requests
 from threading import Thread
 from flask import current_app
 
-def send_async_email(app, params):
+def send_async_email(app, payload, headers):
     with app.app_context():
-        api_key = os.environ.get('RESEND_API_KEY')
-        if not api_key:
-            print("[Mail Service] ERROR: RESEND_API_KEY environment variable is not set!")
-            return
-            
         try:
-            resend.api_key = api_key
-            email = resend.Emails.send(params)
-            print(f"[Mail Service] Email sent successfully! Response: {email}")
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers=headers,
+                timeout=10
+            )
+            if response.status_code in [200, 201, 202]:
+                print(f"[Mail Service] Email sent successfully! Response: {response.text}")
+            else:
+                print(f"[Mail Service] Failed to send email via Brevo. Code: {response.status_code}, Response: {response.text}")
         except Exception as e:
-            print(f"[Mail Service] Failed to send email via Resend: {e}")
-            print("[Mail Service] Troubleshooting Tip: If you are using Resend's free/sandbox tier, make sure the recipient email is the one you signed up with.")
+            print(f"[Mail Service] Error sending email via Brevo: {e}")
 
 def send_remedial_notification(faculty_email, student_name, subject, marks, remedial_date):
-    # Support overriding the recipient email for Resend sandbox mode during testing.
-    # If RESEND_TO_EMAIL is set in the environment, it redirects all emails there.
-    # If not set, it sends directly to the assigned faculty's email.
-    to_email = os.environ.get('RESEND_TO_EMAIL')
-    recipient = to_email if to_email else faculty_email
+    api_key = os.environ.get('BREVO_API_KEY')
+    if not api_key:
+        print("[Mail Service] ERROR: BREVO_API_KEY environment variable is not set!")
+        return
 
-    params = {
-        "from": "Academics <onboarding@resend.dev>",
-        "to": [recipient],
+    sender_email = os.environ.get('SENDER_EMAIL', 'adityava49cse@gmail.com')
+
+    # Prepare Brevo API payload
+    payload = {
+        "sender": {
+            "name": "Academics System",
+            "email": sender_email
+        },
+        "to": [
+            {
+                "email": faculty_email
+            }
+        ],
         "subject": "Remedial Class Scheduled",
-        "html": f"""
+        "htmlContent": f"""
         <p>Hello,</p>
         <p>A remedial class has been scheduled for <strong>{student_name}</strong> in <strong>{subject}</strong>.</p>
         <p>The student scored <strong>{marks}</strong> marks, which is below the threshold.</p>
@@ -38,9 +48,16 @@ def send_remedial_notification(faculty_email, student_name, subject, marks, reme
         <p>Regards,<br>Automated System</p>
         """
     }
+
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
     
     app = current_app._get_current_object()
-    thread = Thread(target=send_async_email, args=[app, params])
+    thread = Thread(target=send_async_email, args=[app, payload, headers])
     thread.start()
+
 
 
