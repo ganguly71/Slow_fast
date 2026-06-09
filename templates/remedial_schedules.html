@@ -5,31 +5,49 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Remedial Class Schedules</h5>
-                <p class="text-muted">These are automatically generated when a student scores below the 50 marks threshold.</p>
+                <h5 class="card-title"><i class="bi bi-calendar-check"></i> Remedial Class Schedules</h5>
+                <p class="text-muted">These are generated when "Book Remedial" is clicked on an assignment with slow learners.</p>
                 <div class="table-responsive">
-                    <table class="table table-bordered">
+                    <table class="table table-bordered align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th>Schedule ID</th>
-                                <th>Date & Time</th>
+                                <th>Date &amp; Time</th>
                                 <th>Student (Roll No)</th>
                                 <th>Subject</th>
                                 <th>Assigned Faculty</th>
+                                <th class="text-center">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for schedule in schedules %}
-                            <tr>
+                            <tr class="{{ 'table-success' if schedule.is_done else '' }}">
                                 <td>{{ schedule.id }}</td>
                                 <td><strong>{{ schedule.date.strftime('%Y-%m-%d %H:%M') }}</strong></td>
                                 <td>{{ schedule.student.name }} ({{ schedule.student.roll_no }})</td>
                                 <td>{{ schedule.subject }}</td>
                                 <td>{{ schedule.faculty.name }}</td>
+                                <td class="text-center">
+                                    <form method="POST"
+                                          action="{{ url_for('main.toggle_remedial_done', schedule_id=schedule.id) }}"
+                                          style="display:inline;">
+                                        {% if schedule.is_done %}
+                                        <button type="submit" class="btn btn-sm btn-success"
+                                                title="Click to mark as Pending">
+                                            <i class="bi bi-check-circle-fill"></i> Done
+                                        </button>
+                                        {% else %}
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                title="Click to mark as Done">
+                                            <i class="bi bi-circle"></i> Pending
+                                        </button>
+                                        {% endif %}
+                                    </form>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="5" class="text-center">No remedial classes scheduled at this time.</td>
+                                <td colspan="6" class="text-center">No remedial classes scheduled at this time.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

@@ -50,8 +50,30 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Students List</h5>
+
+                <!-- ─── Filter Bar ─────────────────────────────── -->
+                <div class="row g-2 mb-3" id="filterBar">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" id="filterRoll"
+                               placeholder="Filter by Roll No...">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" id="filterName"
+                               placeholder="Filter by Name...">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control form-control-sm" id="filterDept"
+                               placeholder="Filter by Department...">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center">
+                        <button class="btn btn-sm btn-outline-secondary w-100" id="clearFilters" title="Clear filters">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-striped align-middle">
+                    <table class="table table-striped align-middle" id="studentsTable">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -62,9 +84,11 @@
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="studentsTableBody">
                             {% for student in students %}
-                            <tr>
+                            <tr data-roll="{{ student.roll_no|lower }}"
+                                data-name="{{ student.name|lower }}"
+                                data-dept="{{ student.department|lower }}">
                                 <td>{{ student.id }}</td>
                                 <td>{{ student.roll_no }}</td>
                                 <td>{{ student.name }}</td>
@@ -93,13 +117,14 @@
                                 </td>
                             </tr>
                             {% else %}
-                            <tr>
+                            <tr id="noStudentsRow">
                                 <td colspan="6" class="text-center">No students found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                <div class="text-muted small" id="filterStatus"></div>
             </div>
         </div>
     </div>
@@ -143,6 +168,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ─── Edit Modal ──────────────────────────────────
     var editModal = document.getElementById('editStudentModal');
     editModal.addEventListener('show.bs.modal', function(event) {
         var button = event.relatedTarget;
@@ -162,6 +188,55 @@ document.addEventListener('DOMContentLoaded', function() {
         editModal.querySelector('#edit_roll_no').value = roll;
         editModal.querySelector('#edit_semester').value = sem;
         editModal.querySelector('#edit_department').value = dept;
+    });
+
+    // ─── Client-Side Filtering ───────────────────────
+    var filterRoll = document.getElementById('filterRoll');
+    var filterName = document.getElementById('filterName');
+    var filterDept = document.getElementById('filterDept');
+    var clearBtn = document.getElementById('clearFilters');
+    var rows = document.querySelectorAll('#studentsTableBody tr[data-roll]');
+    var statusEl = document.getElementById('filterStatus');
+
+    function applyFilters() {
+        var qRoll = filterRoll.value.trim().toLowerCase();
+        var qName = filterName.value.trim().toLowerCase();
+        var qDept = filterDept.value.trim().toLowerCase();
+        var visibleCount = 0;
+
+        rows.forEach(function(row) {
+            var roll = row.getAttribute('data-roll');
+            var name = row.getAttribute('data-name');
+            var dept = row.getAttribute('data-dept');
+
+            var matchRoll = !qRoll || roll.indexOf(qRoll) !== -1;
+            var matchName = !qName || name.indexOf(qName) !== -1;
+            var matchDept = !qDept || dept.indexOf(qDept) !== -1;
+
+            if (matchRoll && matchName && matchDept) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (qRoll || qName || qDept) {
+            statusEl.textContent = 'Showing ' + visibleCount + ' of ' + rows.length + ' student(s)';
+        } else {
+            statusEl.textContent = '';
+        }
+    }
+
+    filterRoll.addEventListener('input', applyFilters);
+    filterName.addEventListener('input', applyFilters);
+    filterDept.addEventListener('input', applyFilters);
+
+    clearBtn.addEventListener('click', function() {
+        filterRoll.value = '';
+        filterName.value = '';
+        filterDept.value = '';
+        applyFilters();
     });
 });
 </script>

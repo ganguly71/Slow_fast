@@ -43,6 +43,18 @@ class Student(db.Model):
     classifications = db.relationship('Classification', backref='student', lazy=True, cascade="all, delete-orphan")
     remedials = db.relationship('RemedialSchedule', backref='student', lazy=True, cascade="all, delete-orphan")
 
+class AssignmentGroup(db.Model):
+    """Represents a single assignment/exam given to a group of students."""
+    __tablename__ = 'assignment_groups'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)          # e.g. "Mid-Sem Exam 1"
+    subject = db.Column(db.String(100), nullable=False)
+    total_marks = db.Column(db.Float, nullable=False)          # maximum marks for this assignment
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    remedial_booked = db.Column(db.Boolean, default=False)     # True once "Book Remedial" has been clicked
+
+    assessments = db.relationship('Assessment', backref='assignment_group', lazy=True, cascade="all, delete-orphan")
+
 class Assessment(db.Model):
     __tablename__ = 'assessments'
     id = db.Column(db.Integer, primary_key=True)
@@ -50,6 +62,7 @@ class Assessment(db.Model):
     subject = db.Column(db.String(100), nullable=False)
     marks = db.Column(db.Float, nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
+    assignment_group_id = db.Column(db.Integer, db.ForeignKey('assignment_groups.id'), nullable=True)
 
 class Classification(db.Model):
     __tablename__ = 'classifications'
@@ -65,4 +78,5 @@ class RemedialSchedule(db.Model):
     subject = db.Column(db.String(100), nullable=False)
     date = db.Column(db.DateTime, nullable=False)
     faculty_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    is_done = db.Column(db.Boolean, default=False)
     faculty = db.relationship('User', backref='remedials_assigned')

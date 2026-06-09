@@ -1,12 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, Student, Assessment, Classification, RemedialSchedule, SUBJECTS
-from mail_service import send_remedial_notification
+from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS
+from mail_service import send_remedial_notification, send_remedial_batch_notification
 from datetime import datetime, timedelta
 
 main = Blueprint('main', __name__)
 
-THRESHOLD_MARKS = 50.0
+THRESHOLD_PERCENT = 50.0  # percentage threshold for slow/fast learner
 
 @main.route('/')
 def index():
@@ -300,71 +300,156 @@ def find_faculty_for_subject(subject):
             return admin
     return None
 
+# ─── Assessment Routes (Redesigned) ──────────────────────────────────────────
+
 @main.route('/assessments', methods=['GET', 'POST'])
 @login_required
 def manage_assessments():
     if request.method == 'POST':
-        student_id = request.form.get('student_id')
+        assignment_name = request.form.get('assignment_name', '').strip()
         subject = request.form.get('subject')
-        marks = float(request.form.get('marks'))
-        
-        # Validate subject
+        total_marks = request.form.get('total_marks')
+
+        # Validate
+        if not assignment_name:
+            flash('Assignment name is required.', 'danger')
+            return redirect(url_for('main.manage_assessments'))
         if subject not in SUBJECTS:
             flash('Invalid subject selected.', 'danger')
             return redirect(url_for('main.manage_assessments'))
-        
-        # Validate student exists
-        student = Student.query.get(student_id)
-        if not student:
-            flash('Student not found.', 'danger')
+        try:
+            total_marks = float(total_marks)
+            if total_marks <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            flash('Total marks must be a positive number.', 'danger')
             return redirect(url_for('main.manage_assessments'))
-        
-        # Record Assessment
-        assessment = Assessment(student_id=student_id, subject=subject, marks=marks)
-        db.session.add(assessment)
-        
-        # Classification Logic
-        if marks < THRESHOLD_MARKS:
-            learner_type = "Slow Learner"
-            
-            # Find the faculty assigned to this subject
-            subject_faculty = find_faculty_for_subject(subject)
-            assigned_faculty_id = subject_faculty.id if subject_faculty else current_user.id
-            faculty_email = subject_faculty.email if subject_faculty else current_user.email
-            
-            # Remedial Scheduling
-            remedial_date = get_next_available_slot()
-            remedial = RemedialSchedule(
-                student_id=student_id,
+
+        # Gather per-student marks from form (keys like "marks_<student_id>")
+        student_ids = request.form.getlist('student_ids')  # hidden inputs listing selected students
+        if not student_ids:
+            flash('Please select at least one student.', 'danger')
+            return redirect(url_for('main.manage_assessments'))
+
+        # Create the assignment group
+        group = AssignmentGroup(
+            name=assignment_name,
+            subject=subject,
+            total_marks=total_marks
+        )
+        db.session.add(group)
+        db.session.flush()  # get group.id
+
+        added_count = 0
+        for sid in student_ids:
+            student = Student.query.get(int(sid))
+            if not student:
+                continue
+            marks_val = request.form.get(f'marks_{sid}', '').strip()
+            if not marks_val:
+                continue
+            try:
+                marks = float(marks_val)
+            except ValueError:
+                continue
+
+            assessment = Assessment(
+                student_id=student.id,
                 subject=subject,
+                marks=marks,
+                assignment_group_id=group.id
+            )
+            db.session.add(assessment)
+            added_count += 1
+
+        db.session.commit()
+        flash(f'Assignment "{assignment_name}" created with {added_count} student(s).', 'success')
+        return redirect(url_for('main.manage_assessments'))
+
+    # GET — show assignment groups
+    groups = AssignmentGroup.query.order_by(AssignmentGroup.date.desc()).all()
+    students = Student.query.order_by(Student.roll_no).all()
+    return render_template('manage_assessments.html',
+                           groups=groups,
+                           students=students,
+                           subjects=SUBJECTS)
+
+
+@main.route('/assessments/book_remedial/<int:group_id>', methods=['POST'])
+@login_required
+def book_remedial(group_id):
+    """Identify slow learners in this assignment group, create remedial
+    schedules, update classifications, and send ONE consolidated email
+    to the subject faculty."""
+    group = AssignmentGroup.query.get_or_404(group_id)
+
+    if group.remedial_booked:
+        flash('Remedial has already been booked for this assignment.', 'warning')
+        return redirect(url_for('main.manage_assessments'))
+
+    threshold = (THRESHOLD_PERCENT / 100.0) * group.total_marks
+    subject_faculty = find_faculty_for_subject(group.subject)
+    assigned_faculty_id = subject_faculty.id if subject_faculty else current_user.id
+    faculty_email = subject_faculty.email if subject_faculty else current_user.email
+    faculty_name = subject_faculty.name if subject_faculty else current_user.name
+
+    remedial_date = get_next_available_slot()
+    slow_students = []
+
+    for assessment in group.assessments:
+        student = assessment.student
+        if assessment.marks < threshold:
+            learner_type = "Slow Learner"
+
+            # Create remedial schedule
+            remedial = RemedialSchedule(
+                student_id=student.id,
+                subject=group.subject,
                 date=remedial_date,
                 faculty_id=assigned_faculty_id
             )
             db.session.add(remedial)
-            
-            # Email Notification to the subject's faculty
-            send_remedial_notification(faculty_email, student.name, subject, marks, remedial_date)
-            
-            faculty_name = subject_faculty.name if subject_faculty else current_user.name
-            flash(f'{student.name} classified as Slow Learner. Remedial scheduled and email sent to {faculty_name}.', 'warning')
+
+            slow_students.append({
+                'name': student.name,
+                'roll_no': student.roll_no,
+                'marks': assessment.marks
+            })
         else:
             learner_type = "Fast Learner"
-            flash(f'{student.name} classified as Fast Learner.', 'success')
-            
-        # Update or Create Classification
-        classification = Classification.query.filter_by(student_id=student_id, subject=subject).first()
+
+        # Update or create classification
+        classification = Classification.query.filter_by(
+            student_id=student.id, subject=group.subject
+        ).first()
         if classification:
             classification.learner_type = learner_type
         else:
-            classification = Classification(student_id=student_id, subject=subject, learner_type=learner_type)
+            classification = Classification(
+                student_id=student.id,
+                subject=group.subject,
+                learner_type=learner_type
+            )
             db.session.add(classification)
-            
-        db.session.commit()
-        return redirect(url_for('main.manage_assessments'))
-        
-    assessments = Assessment.query.order_by(Assessment.date.desc()).all()
-    students = Student.query.all()
-    return render_template('manage_assessments.html', assessments=assessments, students=students, subjects=SUBJECTS)
+
+    group.remedial_booked = True
+    db.session.commit()
+
+    if slow_students:
+        # Send one consolidated email to the faculty
+        send_remedial_batch_notification(
+            faculty_email, group.name, group.subject, slow_students, remedial_date
+        )
+        flash(
+            f'Remedial booked for {len(slow_students)} slow learner(s). '
+            f'Email sent to {faculty_name}.',
+            'warning'
+        )
+    else:
+        flash('No slow learners found in this assignment — no remedial needed!', 'success')
+
+    return redirect(url_for('main.manage_assessments'))
+
 
 @main.route('/api/search_student')
 @login_required
@@ -379,6 +464,18 @@ def search_student():
     results = [{'id': s.id, 'name': s.name, 'roll_no': s.roll_no} for s in students]
     return jsonify(results)
 
+
+@main.route('/api/all_students')
+@login_required
+def all_students_api():
+    """Return all students as JSON for the multi-select picker."""
+    students = Student.query.order_by(Student.roll_no).all()
+    results = [{'id': s.id, 'name': s.name, 'roll_no': s.roll_no, 'department': s.department} for s in students]
+    return jsonify(results)
+
+
+# ─── Remedial Routes ─────────────────────────────────────────────────────────
+
 @main.route('/remedials')
 @login_required
 def remedial_schedules():
@@ -388,6 +485,19 @@ def remedial_schedules():
         schedules = RemedialSchedule.query.filter_by(faculty_id=current_user.id).all()
         
     return render_template('remedial_schedules.html', schedules=schedules)
+
+
+@main.route('/remedials/toggle_done/<int:schedule_id>', methods=['POST'])
+@login_required
+def toggle_remedial_done(schedule_id):
+    """Toggle the is_done status of a remedial schedule entry."""
+    schedule = RemedialSchedule.query.get_or_404(schedule_id)
+    schedule.is_done = not schedule.is_done
+    db.session.commit()
+    status = "Done" if schedule.is_done else "Pending"
+    flash(f'Remedial #{schedule.id} marked as {status}.', 'success')
+    return redirect(url_for('main.remedial_schedules'))
+
 
 @main.route('/reports')
 @login_required
