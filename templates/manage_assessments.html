@@ -210,6 +210,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedCountEl = document.getElementById('selectedCount');
     const submitBtn = document.getElementById('submitBtn');
 
+    function isVisible(item) {
+        return !item.classList.contains('d-none');
+    }
+
     // Combined filter: both search text AND department must match
     function applyFilters() {
         const q = searchInput.value.trim().toLowerCase();
@@ -223,7 +227,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const matchesSearch = !q || roll.includes(q) || name.includes(q);
             const matchesDept = !dept || itemDept === dept;
 
-            item.style.display = (matchesSearch && matchesDept) ? '' : 'none';
+            if (matchesSearch && matchesDept) {
+                item.classList.remove('d-none');
+            } else {
+                item.classList.add('d-none');
+            }
         });
 
         updateSelectAllBtnLabel();
@@ -236,13 +244,11 @@ document.addEventListener('DOMContentLoaded', function() {
     selectAllBtn.addEventListener('click', function() {
         const visibleCheckboxes = [];
         items.forEach(function(item) {
-            if (item.style.display !== 'none') {
-                const cb = item.querySelector('.student-checkbox');
-                visibleCheckboxes.push(cb);
+            if (isVisible(item)) {
+                visibleCheckboxes.push(item.querySelector('.student-checkbox'));
             }
         });
 
-        // If all visible are checked, deselect all; otherwise select all
         const allChecked = visibleCheckboxes.length > 0 &&
             visibleCheckboxes.every(function(cb) { return cb.checked; });
 
@@ -256,9 +262,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSelectAllBtnLabel() {
         const visibleCheckboxes = [];
         items.forEach(function(item) {
-            if (item.style.display !== 'none') {
-                const cb = item.querySelector('.student-checkbox');
-                visibleCheckboxes.push(cb);
+            if (isVisible(item)) {
+                visibleCheckboxes.push(item.querySelector('.student-checkbox'));
             }
         });
 
