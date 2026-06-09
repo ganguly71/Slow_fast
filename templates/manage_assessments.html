@@ -31,14 +31,35 @@
                         <label for="total_marks" class="form-label">Total Marks</label>
                         <input type="number" step="0.1" min="1" class="form-control" id="total_marks"
                                name="total_marks" placeholder="e.g. 50" required>
-                        <div class="form-text">Slow learner threshold = 50% of total marks.</div>
+                    </div>
+
+                    <!-- Threshold Percentage -->
+                    <div class="mb-3">
+                        <label for="threshold_percent" class="form-label">Slow Learner Threshold (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" class="form-control" id="threshold_percent"
+                               name="threshold_percent" placeholder="50" value="50">
+                        <div class="form-text">Students scoring below this % of total marks are classified as slow learners. Default: 50%.</div>
                     </div>
 
                     <!-- Students Attended — Multi-Select -->
                     <div class="mb-3">
                         <label class="form-label">Students Attended</label>
-                        <input type="text" class="form-control mb-2" id="studentSearchInput"
-                               placeholder="Search by roll no or name..." autocomplete="off">
+                        <div class="d-flex gap-2 mb-2">
+                            <input type="text" class="form-control" id="studentSearchInput"
+                                   placeholder="Search by roll no or name..." autocomplete="off">
+                            <select class="form-select" id="departmentFilter" style="max-width: 200px;">
+                                <option value="">All Depts</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept|lower }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllBtn">
+                                <i class="bi bi-check2-all"></i> Select All
+                            </button>
+                            <span class="text-muted small"><span id="selectedCount">0</span> student(s) selected</span>
+                        </div>
                         <div id="studentPickerList"
                              style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .375rem; padding: 0;">
                             {% for s in students %}
@@ -52,10 +73,10 @@
                                        value="{{ s.id }}" data-student-name="{{ s.name }}" data-student-roll="{{ s.roll_no }}">
                                 <span class="fw-semibold me-2">{{ s.roll_no }}</span>
                                 <span class="text-muted">{{ s.name }}</span>
+                                <span class="badge bg-light text-secondary ms-auto">{{ s.department }}</span>
                             </label>
                             {% endfor %}
                         </div>
-                        <div class="mt-1 text-muted small"><span id="selectedCount">0</span> student(s) selected</div>
                     </div>
 
                     <!-- Per-Student Marks Table (appears dynamically) -->
@@ -96,6 +117,7 @@
                                 <th>Assignment</th>
                                 <th>Subject</th>
                                 <th>Total</th>
+                                <th>Threshold</th>
                                 <th>Students</th>
                                 <th class="text-end">Actions</th>
                             </tr>
@@ -109,6 +131,7 @@
                                 </td>
                                 <td>{{ group.subject }}</td>
                                 <td>{{ group.total_marks }}</td>
+                                <td><span class="badge bg-info text-dark">{{ group.threshold_percent }}%</span></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-secondary" type="button"
                                             data-bs-toggle="collapse"
@@ -132,7 +155,7 @@
                             </tr>
                             <!-- Collapsible Details Row -->
                             <tr class="collapse" id="details_{{ group.id }}">
-                                <td colspan="6" class="p-0">
+                                <td colspan="7" class="p-0">
                                     <table class="table table-sm mb-0 table-bordered">
                                         <thead class="table-light">
                                             <tr>
@@ -150,7 +173,7 @@
                                                 <td>{{ a.marks }} / {{ group.total_marks }}</td>
                                                 <td>
                                                     {% set pct = (a.marks / group.total_marks * 100) if group.total_marks > 0 else 0 %}
-                                                    {% if pct < 50 %}
+                                                    {% if pct < group.threshold_percent %}
                                                     <span class="badge bg-warning text-dark">Slow ({{ "%.0f"|format(pct) }}%)</span>
                                                     {% else %}
                                                     <span class="badge bg-success">Fast ({{ "%.0f"|format(pct) }}%)</span>
@@ -164,7 +187,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6" class="text-center">No assignments found.</td>
+                                <td colspan="7" class="text-center">No assignments found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -178,6 +201,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('studentSearchInput');
+    const deptFilter = document.getElementById('departmentFilter');
+    const selectAllBtn = document.getElementById('selectAllBtn');
     const checkboxes = document.querySelectorAll('.student-checkbox');
     const items = document.querySelectorAll('.student-pick-item');
     const marksSection = document.getElementById('marksSection');
@@ -185,23 +210,73 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedCountEl = document.getElementById('selectedCount');
     const submitBtn = document.getElementById('submitBtn');
 
-    // Filter the student list as user types
-    searchInput.addEventListener('input', function() {
-        const q = this.value.trim().toLowerCase();
+    // Combined filter: both search text AND department must match
+    function applyFilters() {
+        const q = searchInput.value.trim().toLowerCase();
+        const dept = deptFilter.value;
+
         items.forEach(function(item) {
             const roll = item.getAttribute('data-roll');
             const name = item.getAttribute('data-name');
-            if (!q || roll.includes(q) || name.includes(q)) {
-                item.style.display = '';
-            } else {
-                item.style.display = 'none';
+            const itemDept = item.getAttribute('data-dept');
+
+            const matchesSearch = !q || roll.includes(q) || name.includes(q);
+            const matchesDept = !dept || itemDept === dept;
+
+            item.style.display = (matchesSearch && matchesDept) ? '' : 'none';
+        });
+
+        updateSelectAllBtnLabel();
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    deptFilter.addEventListener('change', applyFilters);
+
+    // Select All / Deselect All — only affects currently visible items
+    selectAllBtn.addEventListener('click', function() {
+        const visibleCheckboxes = [];
+        items.forEach(function(item) {
+            if (item.style.display !== 'none') {
+                const cb = item.querySelector('.student-checkbox');
+                visibleCheckboxes.push(cb);
             }
         });
+
+        // If all visible are checked, deselect all; otherwise select all
+        const allChecked = visibleCheckboxes.length > 0 &&
+            visibleCheckboxes.every(function(cb) { return cb.checked; });
+
+        visibleCheckboxes.forEach(function(cb) {
+            cb.checked = !allChecked;
+        });
+
+        rebuildMarksTable();
     });
+
+    function updateSelectAllBtnLabel() {
+        const visibleCheckboxes = [];
+        items.forEach(function(item) {
+            if (item.style.display !== 'none') {
+                const cb = item.querySelector('.student-checkbox');
+                visibleCheckboxes.push(cb);
+            }
+        });
+
+        const allChecked = visibleCheckboxes.length > 0 &&
+            visibleCheckboxes.every(function(cb) { return cb.checked; });
+
+        if (allChecked) {
+            selectAllBtn.innerHTML = '<i class="bi bi-x-square"></i> Deselect All';
+        } else {
+            selectAllBtn.innerHTML = '<i class="bi bi-check2-all"></i> Select All';
+        }
+    }
 
     // When a checkbox changes, rebuild the marks table
     checkboxes.forEach(function(cb) {
-        cb.addEventListener('change', rebuildMarksTable);
+        cb.addEventListener('change', function() {
+            rebuildMarksTable();
+        });
     });
 
     function rebuildMarksTable() {
@@ -231,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedCountEl.textContent = count;
         marksSection.style.display = count > 0 ? '' : 'none';
         submitBtn.disabled = count === 0;
+        updateSelectAllBtnLabel();
     }
 });
 </script>

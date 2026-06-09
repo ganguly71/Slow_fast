@@ -50,6 +50,7 @@ class AssignmentGroup(db.Model):
     name = db.Column(db.String(200), nullable=False)          # e.g. "Mid-Sem Exam 1"
     subject = db.Column(db.String(100), nullable=False)
     total_marks = db.Column(db.Float, nullable=False)          # maximum marks for this assignment
+    threshold_percent = db.Column(db.Float, nullable=False, default=50.0)  # slow learner threshold %
     date = db.Column(db.DateTime, default=datetime.utcnow)
     remedial_booked = db.Column(db.Boolean, default=False)     # True once "Book Remedial" has been clicked
 

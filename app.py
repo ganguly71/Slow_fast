@@ -31,6 +31,14 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # Lightweight migration: add threshold_percent column if upgrading from old schema
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE assignment_groups ADD COLUMN threshold_percent FLOAT NOT NULL DEFAULT 50.0"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()  # column already exists
         # Create a default admin if none exists
         if not User.query.filter_by(role='admin').first():
             admin = User(name='Admin', email='admin@example.com', role='admin')

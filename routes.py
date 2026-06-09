@@ -309,6 +309,7 @@ def manage_assessments():
         assignment_name = request.form.get('assignment_name', '').strip()
         subject = request.form.get('subject')
         total_marks = request.form.get('total_marks')
+        threshold_input = request.form.get('threshold_percent', '').strip()
 
         # Validate
         if not assignment_name:
@@ -325,6 +326,14 @@ def manage_assessments():
             flash('Total marks must be a positive number.', 'danger')
             return redirect(url_for('main.manage_assessments'))
 
+        # Parse threshold — default to 50% if not provided or invalid
+        try:
+            threshold_percent = float(threshold_input)
+            if threshold_percent < 0 or threshold_percent > 100:
+                threshold_percent = 50.0
+        except (TypeError, ValueError):
+            threshold_percent = 50.0
+
         # Gather per-student marks from form (keys like "marks_<student_id>")
         student_ids = request.form.getlist('student_ids')  # hidden inputs listing selected students
         if not student_ids:
@@ -335,7 +344,8 @@ def manage_assessments():
         group = AssignmentGroup(
             name=assignment_name,
             subject=subject,
-            total_marks=total_marks
+            total_marks=total_marks,
+            threshold_percent=threshold_percent
         )
         db.session.add(group)
         db.session.flush()  # get group.id
@@ -369,10 +379,12 @@ def manage_assessments():
     # GET — show assignment groups
     groups = AssignmentGroup.query.order_by(AssignmentGroup.date.desc()).all()
     students = Student.query.order_by(Student.roll_no).all()
+    departments = sorted(set(s.department for s in students if s.department))
     return render_template('manage_assessments.html',
                            groups=groups,
                            students=students,
-                           subjects=SUBJECTS)
+                           subjects=SUBJECTS,
+                           departments=departments)
 
 
 @main.route('/assessments/book_remedial/<int:group_id>', methods=['POST'])
@@ -387,7 +399,7 @@ def book_remedial(group_id):
         flash('Remedial has already been booked for this assignment.', 'warning')
         return redirect(url_for('main.manage_assessments'))
 
-    threshold = (THRESHOLD_PERCENT / 100.0) * group.total_marks
+    threshold = (group.threshold_percent / 100.0) * group.total_marks
     subject_faculty = find_faculty_for_subject(group.subject)
     assigned_faculty_id = subject_faculty.id if subject_faculty else current_user.id
     faculty_email = subject_faculty.email if subject_faculty else current_user.email
