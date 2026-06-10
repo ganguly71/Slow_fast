@@ -79,5 +79,7 @@ class RemedialSchedule(db.Model):
     subject = db.Column(db.String(100), nullable=False)
     date = db.Column(db.DateTime, nullable=False)
     faculty_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    assignment_group_id = db.Column(db.Integer, db.ForeignKey('assignment_groups.id'), nullable=True)
     is_done = db.Column(db.Boolean, default=False)
     faculty = db.relationship('User', backref='remedials_assigned')
+    assignment_group = db.relationship('AssignmentGroup', backref='remedial_schedules')

@@ -1,49 +1,91 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2 class="mb-4">Dashboard</h2>
+<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Dashboard</h2>
 
-<div class="row mb-4">
+<!-- Stat Cards Row -->
+<div class="row mb-4 g-3">
     <div class="col-md-3">
-        <div class="card bg-info text-white text-center">
-            <div class="card-body">
-                <h5 class="card-title">Total Students</h5>
-                <h2 class="display-4">{{ total_students }}</h2>
+        <div class="card text-white" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <i class="bi bi-people-fill" style="font-size: 2rem;"></i>
+                </div>
+                <h6 class="card-title mb-1">Total Students</h6>
+                <h2 class="display-5 fw-bold mb-0">{{ total_students }}</h2>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-success text-white text-center">
-            <div class="card-body">
-                <h5 class="card-title">Fast Learners</h5>
-                <h2 class="display-4">{{ fast_learners }}</h2>
+        <div class="card text-white" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <i class="bi bi-clipboard2-data-fill" style="font-size: 2rem;"></i>
+                </div>
+                <h6 class="card-title mb-1">Total Assignments</h6>
+                <h2 class="display-5 fw-bold mb-0">{{ total_assignments }}</h2>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-warning text-dark text-center">
-            <div class="card-body">
-                <h5 class="card-title">Slow Learners</h5>
-                <h2 class="display-4">{{ slow_learners }}</h2>
+        <div class="card text-white" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <i class="bi bi-person-check-fill" style="font-size: 2rem;"></i>
+                </div>
+                <h6 class="card-title mb-1">Avg Attendance</h6>
+                <h2 class="display-5 fw-bold mb-0">{{ avg_attendance }}%</h2>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-primary text-white text-center">
-            <div class="card-body">
-                <h5 class="card-title">Upcoming Remedials</h5>
-                <h2 class="display-4">{{ upcoming_remedials }}</h2>
+        <div class="card text-white" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <i class="bi bi-calendar-event-fill" style="font-size: 2rem;"></i>
+                </div>
+                <h6 class="card-title mb-1">Upcoming Remedials</h6>
+                <h2 class="display-5 fw-bold mb-0">{{ upcoming_remedials }}</h2>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
+<!-- Charts Row 1 -->
+<div class="row mb-4 g-3">
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Learner Distribution</h5>
-                <canvas id="learnerChart"></canvas>
+                <h6 class="card-title"><i class="bi bi-building"></i> Students per Department</h6>
+                <canvas id="deptChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-mortarboard-fill"></i> Students per Semester</h6>
+                <canvas id="semChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="row mb-4 g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-book-fill"></i> Assignments per Subject</h6>
+                <canvas id="subjChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-graph-up-arrow"></i> Average Score per Subject</h6>
+                <canvas id="avgScoreChart" height="260"></canvas>
             </div>
         </div>
     </div>
@@ -51,19 +93,99 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var ctx = document.getElementById('learnerChart').getContext('2d');
-    var learnerChart = new Chart(ctx, {
-        type: 'pie',
+    // Color palette
+    const palette = [
+        '#667eea', '#764ba2', '#f093fb', '#f5576c',
+        '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+        '#fa709a', '#fee140', '#a18cd1', '#fbc2eb'
+    ];
+
+    // 1. Students per Department — Bar Chart
+    new Chart(document.getElementById('deptChart').getContext('2d'), {
+        type: 'bar',
         data: {
-            labels: ['Fast Learners', 'Slow Learners'],
+            labels: {{ dept_labels | tojson }},
             datasets: [{
-                data: [{{ fast_learners }}, {{ slow_learners }}],
-                backgroundColor: ['#198754', '#ffc107'],
-                hoverOffset: 4
+                label: 'Students',
+                data: {{ dept_counts | tojson }},
+                backgroundColor: palette.slice(0, {{ dept_labels | length }}),
+                borderRadius: 8,
+                barPercentage: 0.6
             }]
         },
         options: {
-            responsive: true
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+            }
+        }
+    });
+
+    // 2. Students per Semester — Bar Chart
+    new Chart(document.getElementById('semChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: {{ sem_labels | tojson }},
+            datasets: [{
+                label: 'Students',
+                data: {{ sem_counts | tojson }},
+                backgroundColor: palette.slice(2, 2 + {{ sem_labels | length }}),
+                borderRadius: 8,
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+            }
+        }
+    });
+
+    // 3. Assignments per Subject — Doughnut Chart
+    new Chart(document.getElementById('subjChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ subj_labels | tojson }},
+            datasets: [{
+                data: {{ subj_counts | tojson }},
+                backgroundColor: palette.slice(0, {{ subj_labels | length }}),
+                hoverOffset: 8,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // 4. Average Score per Subject — Horizontal Bar
+    new Chart(document.getElementById('avgScoreChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: {{ avg_score_labels | tojson }},
+            datasets: [{
+                label: 'Avg Marks',
+                data: {{ avg_score_values | tojson }},
+                backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderRadius: 8,
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true }
+            }
         }
     });
 });

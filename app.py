@@ -39,6 +39,14 @@ def create_app():
             db.session.commit()
         except Exception:
             db.session.rollback()  # column already exists
+        # Migration: add assignment_group_id to remedial_schedules
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE remedial_schedules ADD COLUMN assignment_group_id INTEGER REFERENCES assignment_groups(id)"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()  # column already exists
         # Create a default admin if none exists
         if not User.query.filter_by(role='admin').first():
             admin = User(name='Admin', email='admin@example.com', role='admin')

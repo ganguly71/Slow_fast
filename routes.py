@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS
 from mail_service import send_remedial_notification, send_remedial_batch_notification
 from datetime import datetime, timedelta
+from sqlalchemy import func
 
 main = Blueprint('main', __name__)
 
@@ -38,24 +39,68 @@ def logout():
     logout_user()
     return redirect(url_for('main.login'))
 
+
+# ─── Dashboard (Feature 1: Overhauled with interactive charts) ────────────────
+
 @main.route('/dashboard')
 @login_required
 def dashboard():
     total_students = Student.query.count()
-    # Count UNIQUE students classified as fast/slow (not per-subject classification rows)
-    fast_learners = db.session.query(Classification.student_id).filter_by(
-        learner_type='Fast Learner'
-    ).distinct().count()
-    slow_learners = db.session.query(Classification.student_id).filter_by(
-        learner_type='Slow Learner'
-    ).distinct().count()
+    total_assignments = AssignmentGroup.query.count()
     upcoming_remedials = RemedialSchedule.query.filter(RemedialSchedule.date >= datetime.utcnow()).count()
-    
-    return render_template('dashboard.html', 
+
+    # Avg attendance: for each assignment, how many students appeared (marks != -1) vs total selected
+    all_groups = AssignmentGroup.query.all()
+    total_appeared = 0
+    total_selected = 0
+    for g in all_groups:
+        for a in g.assessments:
+            total_selected += 1
+            if a.marks != -1:
+                total_appeared += 1
+    avg_attendance = round((total_appeared / total_selected * 100), 1) if total_selected > 0 else 0
+
+    # Students per department
+    dept_rows = db.session.query(Student.department, func.count(Student.id)).group_by(Student.department).all()
+    dept_labels = [r[0] for r in dept_rows]
+    dept_counts = [r[1] for r in dept_rows]
+
+    # Students per semester
+    sem_rows = db.session.query(Student.semester, func.count(Student.id)).group_by(Student.semester).order_by(Student.semester).all()
+    sem_labels = [f"Sem {r[0]}" for r in sem_rows]
+    sem_counts = [r[1] for r in sem_rows]
+
+    # Assignments per subject
+    subj_rows = db.session.query(AssignmentGroup.subject, func.count(AssignmentGroup.id)).group_by(AssignmentGroup.subject).all()
+    subj_labels = [r[0] for r in subj_rows]
+    subj_counts = [r[1] for r in subj_rows]
+
+    # Average score per subject (excluding absent marks = -1)
+    avg_score_rows = db.session.query(
+        AssignmentGroup.subject,
+        func.avg(Assessment.marks)
+    ).join(Assessment, Assessment.assignment_group_id == AssignmentGroup.id
+    ).filter(Assessment.marks != -1
+    ).group_by(AssignmentGroup.subject).all()
+    avg_score_labels = [r[0] for r in avg_score_rows]
+    avg_score_values = [round(r[1], 1) if r[1] else 0 for r in avg_score_rows]
+
+    return render_template('dashboard.html',
                            total_students=total_students,
-                           fast_learners=fast_learners,
-                           slow_learners=slow_learners,
-                           upcoming_remedials=upcoming_remedials)
+                           total_assignments=total_assignments,
+                           avg_attendance=avg_attendance,
+                           upcoming_remedials=upcoming_remedials,
+                           dept_labels=dept_labels,
+                           dept_counts=dept_counts,
+                           sem_labels=sem_labels,
+                           sem_counts=sem_counts,
+                           subj_labels=subj_labels,
+                           subj_counts=subj_counts,
+                           avg_score_labels=avg_score_labels,
+                           avg_score_values=avg_score_values)
+
+
+# ─── Student Routes ──────────────────────────────────────────────────────────
 
 @main.route('/students', methods=['GET', 'POST'])
 @login_required
@@ -201,6 +246,64 @@ def import_students():
     flash(f'Successfully imported students: {added_count} added, {updated_count} updated.', 'success')
     return redirect(url_for('main.manage_students'))
 
+
+# ─── Student Detail (Feature 3) ──────────────────────────────────────────────
+
+@main.route('/students/<int:student_id>/detail')
+@login_required
+def student_detail(student_id):
+    student = Student.query.get_or_404(student_id)
+    assessments = Assessment.query.filter_by(student_id=student.id).order_by(Assessment.date.desc()).all()
+
+    total_assignments = len(assessments)
+    absent_count = sum(1 for a in assessments if a.marks == -1)
+    present_assessments = [a for a in assessments if a.marks != -1]
+
+    if present_assessments:
+        avg_percentage = round(
+            sum((a.marks / a.assignment_group.total_marks * 100) for a in present_assessments if a.assignment_group) /
+            len([a for a in present_assessments if a.assignment_group]),
+            1
+        ) if any(a.assignment_group for a in present_assessments) else 0
+    else:
+        avg_percentage = 0
+
+    # Build per-assignment detail list
+    assignment_details = []
+    for a in assessments:
+        group = a.assignment_group
+        if a.marks == -1:
+            status = 'Absent'
+            pct = None
+        elif group:
+            pct = round(a.marks / group.total_marks * 100, 1) if group.total_marks > 0 else 0
+            threshold = group.threshold_percent
+            status = 'Slow Learner' if pct < threshold else 'Fast Learner'
+        else:
+            pct = None
+            status = 'N/A'
+
+        assignment_details.append({
+            'name': group.name if group else 'Unknown',
+            'subject': a.subject,
+            'marks': a.marks,
+            'total_marks': group.total_marks if group else '?',
+            'percentage': pct,
+            'status': status,
+            'date': a.date
+        })
+
+    return render_template('student_detail.html',
+                           student=student,
+                           total_assignments=total_assignments,
+                           absent_count=absent_count,
+                           present_count=total_assignments - absent_count,
+                           avg_percentage=avg_percentage,
+                           assignment_details=assignment_details)
+
+
+# ─── Faculty Routes ──────────────────────────────────────────────────────────
+
 @main.route('/faculty', methods=['GET', 'POST'])
 @login_required
 def manage_faculty():
@@ -300,7 +403,8 @@ def find_faculty_for_subject(subject):
             return admin
     return None
 
-# ─── Assessment Routes (Redesigned) ──────────────────────────────────────────
+
+# ─── Assessment Routes (Feature 2: Absent support + Feature 4: Stats) ────────
 
 @main.route('/assessments', methods=['GET', 'POST'])
 @login_required
@@ -358,10 +462,15 @@ def manage_assessments():
             marks_val = request.form.get(f'marks_{sid}', '').strip()
             if not marks_val:
                 continue
-            try:
-                marks = float(marks_val)
-            except ValueError:
-                continue
+
+            # Feature 2: Accept 'A' or 'a' for absent → store as -1
+            if marks_val.upper() == 'A':
+                marks = -1
+            else:
+                try:
+                    marks = float(marks_val)
+                except ValueError:
+                    continue
 
             assessment = Assessment(
                 student_id=student.id,
@@ -392,7 +501,7 @@ def manage_assessments():
 def book_remedial(group_id):
     """Identify slow learners in this assignment group, create remedial
     schedules, update classifications, and send ONE consolidated email
-    to the subject faculty."""
+    to the subject faculty. Absent students are listed separately."""
     group = AssignmentGroup.query.get_or_404(group_id)
 
     if group.remedial_booked:
@@ -407,18 +516,29 @@ def book_remedial(group_id):
 
     remedial_date = get_next_available_slot()
     slow_students = []
+    absent_students = []
 
     for assessment in group.assessments:
         student = assessment.student
+
+        # Feature 2: Handle absent students (marks == -1)
+        if assessment.marks == -1:
+            absent_students.append({
+                'name': student.name,
+                'roll_no': student.roll_no,
+            })
+            continue  # Don't classify absent students
+
         if assessment.marks < threshold:
             learner_type = "Slow Learner"
 
-            # Create remedial schedule
+            # Create remedial schedule (Feature 5: link to assignment_group)
             remedial = RemedialSchedule(
                 student_id=student.id,
                 subject=group.subject,
                 date=remedial_date,
-                faculty_id=assigned_faculty_id
+                faculty_id=assigned_faculty_id,
+                assignment_group_id=group.id
             )
             db.session.add(remedial)
 
@@ -447,13 +567,19 @@ def book_remedial(group_id):
     group.remedial_booked = True
     db.session.commit()
 
-    if slow_students:
-        # Send one consolidated email to the faculty
+    if slow_students or absent_students:
+        # Send one consolidated email with separate absent list
         send_remedial_batch_notification(
-            faculty_email, group.name, group.subject, slow_students, remedial_date
+            faculty_email, group.name, group.subject, slow_students, remedial_date,
+            absent_list=absent_students
         )
+        msg_parts = []
+        if slow_students:
+            msg_parts.append(f'{len(slow_students)} slow learner(s)')
+        if absent_students:
+            msg_parts.append(f'{len(absent_students)} absent student(s)')
         flash(
-            f'Remedial booked for {len(slow_students)} slow learner(s). '
+            f'Remedial booked for {" and ".join(msg_parts)}. '
             f'Email sent to {faculty_name}.',
             'warning'
         )
@@ -461,6 +587,63 @@ def book_remedial(group_id):
         flash('No slow learners found in this assignment — no remedial needed!', 'success')
 
     return redirect(url_for('main.manage_assessments'))
+
+
+# ─── Assignment Stats API (Feature 4) ────────────────────────────────────────
+
+@main.route('/api/assignment_stats/<int:group_id>')
+@login_required
+def assignment_stats(group_id):
+    """Return JSON stats for an assignment group."""
+    group = AssignmentGroup.query.get_or_404(group_id)
+    threshold = (group.threshold_percent / 100.0) * group.total_marks
+
+    slow = []
+    fast = []
+    absent = []
+    total_marks_sum = 0
+    present_count = 0
+
+    for a in group.assessments:
+        student = a.student
+        entry = {
+            'name': student.name,
+            'roll_no': student.roll_no,
+            'marks': a.marks,
+            'department': student.department
+        }
+        if a.marks == -1:
+            entry['percentage'] = None
+            absent.append(entry)
+        else:
+            pct = round(a.marks / group.total_marks * 100, 1) if group.total_marks > 0 else 0
+            entry['percentage'] = pct
+            total_marks_sum += a.marks
+            present_count += 1
+            if a.marks < threshold:
+                slow.append(entry)
+            else:
+                fast.append(entry)
+
+    avg_score = round(total_marks_sum / present_count, 2) if present_count > 0 else 0
+    avg_percentage = round(avg_score / group.total_marks * 100, 1) if group.total_marks > 0 and present_count > 0 else 0
+
+    return jsonify({
+        'assignment_name': group.name,
+        'subject': group.subject,
+        'total_marks': group.total_marks,
+        'threshold_percent': group.threshold_percent,
+        'threshold_marks': threshold,
+        'total_students': len(group.assessments),
+        'slow_count': len(slow),
+        'fast_count': len(fast),
+        'absent_count': len(absent),
+        'avg_score': avg_score,
+        'avg_percentage': avg_percentage,
+        'slow_learners': slow,
+        'fast_learners': fast,
+        'absent_students': absent
+    })
 
 
 @main.route('/api/search_student')
@@ -486,7 +669,7 @@ def all_students_api():
     return jsonify(results)
 
 
-# ─── Remedial Routes ─────────────────────────────────────────────────────────
+# ─── Remedial Routes (Feature 5: Grouped by assignment) ──────────────────────
 
 @main.route('/remedials')
 @login_required
@@ -495,8 +678,37 @@ def remedial_schedules():
         schedules = RemedialSchedule.query.all()
     else:
         schedules = RemedialSchedule.query.filter_by(faculty_id=current_user.id).all()
-        
-    return render_template('remedial_schedules.html', schedules=schedules)
+
+    # Group schedules by (assignment_group_id, subject, date, faculty_id)
+    grouped = {}
+    for s in schedules:
+        key = (s.assignment_group_id, s.subject, s.date.strftime('%Y-%m-%d %H:%M'), s.faculty_id)
+        if key not in grouped:
+            grouped[key] = {
+                'assignment_group_id': s.assignment_group_id,
+                'assignment_name': s.assignment_group.name if s.assignment_group else 'Legacy',
+                'subject': s.subject,
+                'date': s.date,
+                'faculty_name': s.faculty.name,
+                'faculty_id': s.faculty_id,
+                'students': [],
+                'all_done': True,
+                'schedule_ids': []
+            }
+        grouped[key]['students'].append({
+            'name': s.student.name,
+            'roll_no': s.student.roll_no,
+            'is_done': s.is_done,
+            'schedule_id': s.id
+        })
+        grouped[key]['schedule_ids'].append(s.id)
+        if not s.is_done:
+            grouped[key]['all_done'] = False
+
+    # Sort by date desc
+    remedial_groups = sorted(grouped.values(), key=lambda x: x['date'], reverse=True)
+
+    return render_template('remedial_schedules.html', remedial_groups=remedial_groups)
 
 
 @main.route('/remedials/toggle_done/<int:schedule_id>', methods=['POST'])
@@ -508,6 +720,22 @@ def toggle_remedial_done(schedule_id):
     db.session.commit()
     status = "Done" if schedule.is_done else "Pending"
     flash(f'Remedial #{schedule.id} marked as {status}.', 'success')
+    return redirect(url_for('main.remedial_schedules'))
+
+
+@main.route('/remedials/toggle_group_done', methods=['POST'])
+@login_required
+def toggle_group_done():
+    """Toggle all remedial entries in a group as done/pending."""
+    schedule_ids = request.form.getlist('schedule_ids')
+    mark_as = request.form.get('mark_as', 'done')
+
+    for sid in schedule_ids:
+        schedule = RemedialSchedule.query.get(int(sid))
+        if schedule:
+            schedule.is_done = (mark_as == 'done')
+    db.session.commit()
+    flash(f'All remedials in this class marked as {"Done" if mark_as == "done" else "Pending"}.', 'success')
     return redirect(url_for('main.remedial_schedules'))
 
 

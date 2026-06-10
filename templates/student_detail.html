@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('main.manage_students') }}" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+    <h2 class="mb-0"><i class="bi bi-person-badge-fill"></i> Student Details</h2>
+</div>
+
+<!-- Student Info Card -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-1 text-center">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center"
+                     style="width: 64px; height: 64px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 1.5rem; font-weight: bold;">
+                    {{ student.name[0] | upper }}
+                </div>
+            </div>
+            <div class="col-md-11">
+                <h4 class="mb-1">{{ student.name }}</h4>
+                <div class="d-flex gap-3 text-muted">
+                    <span><i class="bi bi-hash"></i> {{ student.roll_no }}</span>
+                    <span><i class="bi bi-building"></i> {{ student.department }}</span>
+                    <span><i class="bi bi-mortarboard"></i> Semester {{ student.semester }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+            <div class="card-body text-center">
+                <i class="bi bi-clipboard2-data" style="font-size: 1.8rem;"></i>
+                <h3 class="fw-bold mt-2 mb-0">{{ total_assignments }}</h3>
+                <small>Total Assignments</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle" style="font-size: 1.8rem;"></i>
+                <h3 class="fw-bold mt-2 mb-0">{{ present_count }}</h3>
+                <small>Present</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #f5576c, #ff6b6b);">
+            <div class="card-body text-center">
+                <i class="bi bi-person-x" style="font-size: 1.8rem;"></i>
+                <h3 class="fw-bold mt-2 mb-0">{{ absent_count }}</h3>
+                <small>Absent</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+            <div class="card-body text-center">
+                <i class="bi bi-graph-up" style="font-size: 1.8rem;"></i>
+                <h3 class="fw-bold mt-2 mb-0">{{ avg_percentage }}%</h3>
+                <small>Avg Score</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Chart -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-graph-up-arrow"></i> Performance Over Assignments</h6>
+                <canvas id="performanceChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-pie-chart-fill"></i> Attendance</h6>
+                <canvas id="attendanceChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Breakdown Table -->
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-table"></i> Assignment Breakdown</h5>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Assignment</th>
+                        <th>Subject</th>
+                        <th>Marks</th>
+                        <th>Percentage</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assignment_details %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ a.name }}</strong></td>
+                        <td>{{ a.subject }}</td>
+                        <td>
+                            {% if a.status == 'Absent' %}
+                            <span class="text-danger fw-bold">Absent</span>
+                            {% else %}
+                            {{ a.marks }} / {{ a.total_marks }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if a.percentage is not none %}
+                            {{ a.percentage }}%
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if a.status == 'Absent' %}
+                            <span class="badge bg-danger">Absent</span>
+                            {% elif a.status == 'Slow Learner' %}
+                            <span class="badge bg-warning text-dark">Slow Learner</span>
+                            {% elif a.status == 'Fast Learner' %}
+                            <span class="badge bg-success">Fast Learner</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ a.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">No assignments found for this student.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Build data arrays from assignment_details
+    var labels = [];
+    var scores = [];
+    {% for a in assignment_details | reverse %}
+    {% if a.status != 'Absent' and a.percentage is not none %}
+    labels.push('{{ a.name }} ({{ a.subject }})');
+    scores.push({{ a.percentage }});
+    {% endif %}
+    {% endfor %}
+
+    // Performance line chart
+    if (labels.length > 0) {
+        new Chart(document.getElementById('performanceChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Score %',
+                    data: scores,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#667eea',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percentage (%)' } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // Attendance doughnut
+    new Chart(document.getElementById('attendanceChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Present', 'Absent'],
+            datasets: [{
+                data: [{{ present_count }}, {{ absent_count }}],
+                backgroundColor: ['#43e97b', '#f5576c'],
+                hoverOffset: 8,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+});
+</script>
+{% endblock %}

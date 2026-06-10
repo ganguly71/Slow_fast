@@ -82,6 +82,9 @@
                     <!-- Per-Student Marks Table (appears dynamically) -->
                     <div id="marksSection" style="display:none;">
                         <label class="form-label fw-bold">Enter Marks</label>
+                        <div class="alert alert-info py-2 small">
+                            <i class="bi bi-info-circle"></i> Enter marks or type <strong>A</strong> to mark a student as absent.
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered align-middle" id="marksTable">
                                 <thead class="table-light">
@@ -140,17 +143,25 @@
                                     </button>
                                 </td>
                                 <td class="text-end">
-                                    {% if group.remedial_booked %}
-                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> Booked</span>
-                                    {% else %}
-                                    <form method="POST" action="{{ url_for('main.book_remedial', group_id=group.id) }}"
-                                          style="display:inline;"
-                                          onsubmit="return confirm('Book remedial class for slow learners in this assignment?');">
-                                        <button type="submit" class="btn btn-sm btn-warning">
-                                            <i class="bi bi-journal-medical"></i> Book Remedial
+                                    <div class="d-flex gap-1 justify-content-end flex-wrap">
+                                        <!-- Assignment Stats Button -->
+                                        <button type="button" class="btn btn-sm btn-outline-info"
+                                                onclick="showAssignmentStats({{ group.id }})"
+                                                title="View assignment statistics">
+                                            <i class="bi bi-bar-chart-line"></i> Stats
                                         </button>
-                                    </form>
-                                    {% endif %}
+                                        {% if group.remedial_booked %}
+                                        <span class="badge bg-success d-flex align-items-center"><i class="bi bi-check-lg"></i> Booked</span>
+                                        {% else %}
+                                        <form method="POST" action="{{ url_for('main.book_remedial', group_id=group.id) }}"
+                                              style="display:inline;"
+                                              onsubmit="return confirm('Book remedial class for slow learners in this assignment?');">
+                                            <button type="submit" class="btn btn-sm btn-warning">
+                                                <i class="bi bi-journal-medical"></i> Book Remedial
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             <!-- Collapsible Details Row -->
@@ -170,13 +181,23 @@
                                             <tr>
                                                 <td>{{ a.student.roll_no }}</td>
                                                 <td>{{ a.student.name }}</td>
-                                                <td>{{ a.marks }} / {{ group.total_marks }}</td>
                                                 <td>
+                                                    {% if a.marks == -1 %}
+                                                    <span class="text-danger fw-bold">Absent</span>
+                                                    {% else %}
+                                                    {{ a.marks }} / {{ group.total_marks }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if a.marks == -1 %}
+                                                    <span class="badge bg-danger">Absent</span>
+                                                    {% else %}
                                                     {% set pct = (a.marks / group.total_marks * 100) if group.total_marks > 0 else 0 %}
                                                     {% if pct < group.threshold_percent %}
                                                     <span class="badge bg-warning text-dark">Slow ({{ "%.0f"|format(pct) }}%)</span>
                                                     {% else %}
                                                     <span class="badge bg-success">Fast ({{ "%.0f"|format(pct) }}%)</span>
+                                                    {% endif %}
                                                     {% endif %}
                                                 </td>
                                             </tr>
@@ -193,6 +214,31 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Stats Modal -->
+<div class="modal fade" id="assignmentStatsModal" tabindex="-1" aria-labelledby="assignmentStatsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="assignmentStatsModalLabel">
+                    <i class="bi bi-bar-chart-line"></i> Assignment Statistics
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="statsModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading statistics...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -301,8 +347,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<td>' + sname + '</td>' +
                     '<td>' +
                     '<input type="hidden" name="student_ids" value="' + sid + '">' +
-                    '<input type="number" step="0.1" min="0" class="form-control form-control-sm"' +
-                    ' name="marks_' + sid + '" required>' +
+                    '<input type="text" class="form-control form-control-sm marks-input"' +
+                    ' name="marks_' + sid + '" placeholder="Marks or A" required>' +
                     '</td>';
                 marksBody.appendChild(row);
             }
@@ -314,5 +360,99 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSelectAllBtnLabel();
     }
 });
+
+// Assignment Stats Modal (Feature 4)
+function showAssignmentStats(groupId) {
+    const modal = new bootstrap.Modal(document.getElementById('assignmentStatsModal'));
+    const body = document.getElementById('statsModalBody');
+    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Loading statistics...</p></div>';
+    modal.show();
+
+    fetch('/api/assignment_stats/' + groupId)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            let html = '';
+
+            // Summary Cards
+            html += '<div class="row g-3 mb-4">';
+            html += statCard('Total Students', data.total_students, 'bi-people-fill', '#667eea');
+            html += statCard('Slow Learners', data.slow_count, 'bi-exclamation-triangle-fill', '#f5576c');
+            html += statCard('Fast Learners', data.fast_count, 'bi-lightning-charge-fill', '#43e97b');
+            html += statCard('Absent', data.absent_count, 'bi-person-x-fill', '#6c757d');
+            html += '</div>';
+
+            // Info row
+            html += '<div class="row g-3 mb-4">';
+            html += '<div class="col-md-6"><div class="card"><div class="card-body">';
+            html += '<p class="mb-1"><strong>Assignment:</strong> ' + data.assignment_name + '</p>';
+            html += '<p class="mb-1"><strong>Subject:</strong> ' + data.subject + '</p>';
+            html += '<p class="mb-1"><strong>Total Marks:</strong> ' + data.total_marks + '</p>';
+            html += '<p class="mb-0"><strong>Threshold:</strong> ' + data.threshold_percent + '% (' + data.threshold_marks + ' marks)</p>';
+            html += '</div></div></div>';
+            html += '<div class="col-md-6"><div class="card"><div class="card-body text-center">';
+            html += '<h6 class="text-muted">Average Score</h6>';
+            html += '<h2 class="display-6 fw-bold" style="color:#667eea">' + data.avg_score + ' / ' + data.total_marks + '</h2>';
+            html += '<p class="text-muted mb-0">(' + data.avg_percentage + '%)</p>';
+            html += '</div></div></div>';
+            html += '</div>';
+
+            // Category tabs
+            html += '<ul class="nav nav-tabs" role="tablist">';
+            html += '<li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#slowTab">🔻 Slow Learners (' + data.slow_count + ')</a></li>';
+            html += '<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#fastTab">⚡ Fast Learners (' + data.fast_count + ')</a></li>';
+            html += '<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#absentTab">❌ Absent (' + data.absent_count + ')</a></li>';
+            html += '</ul>';
+            html += '<div class="tab-content border border-top-0 rounded-bottom p-3">';
+
+            // Slow tab
+            html += '<div class="tab-pane fade show active" id="slowTab">';
+            html += studentTable(data.slow_learners, true);
+            html += '</div>';
+
+            // Fast tab
+            html += '<div class="tab-pane fade" id="fastTab">';
+            html += studentTable(data.fast_learners, true);
+            html += '</div>';
+
+            // Absent tab
+            html += '<div class="tab-pane fade" id="absentTab">';
+            html += studentTable(data.absent_students, false);
+            html += '</div>';
+
+            html += '</div>';
+
+            body.innerHTML = html;
+        })
+        .catch(function(err) {
+            body.innerHTML = '<div class="alert alert-danger">Failed to load stats: ' + err + '</div>';
+        });
+}
+
+function statCard(label, value, icon, color) {
+    return '<div class="col-3">' +
+        '<div class="card text-center" style="border-top: 3px solid ' + color + ';">' +
+        '<div class="card-body py-3">' +
+        '<i class="bi ' + icon + '" style="font-size:1.5rem; color:' + color + ';"></i>' +
+        '<h3 class="fw-bold mb-0 mt-1">' + value + '</h3>' +
+        '<small class="text-muted">' + label + '</small>' +
+        '</div></div></div>';
+}
+
+function studentTable(students, showMarks) {
+    if (!students || students.length === 0) {
+        return '<p class="text-muted text-center my-3">No students in this category.</p>';
+    }
+    let html = '<table class="table table-sm table-bordered mt-2">';
+    html += '<thead class="table-light"><tr><th>#</th><th>Roll No</th><th>Name</th><th>Department</th>';
+    if (showMarks) html += '<th>Marks</th><th>%</th>';
+    html += '</tr></thead><tbody>';
+    students.forEach(function(s, i) {
+        html += '<tr><td>' + (i+1) + '</td><td>' + s.roll_no + '</td><td>' + s.name + '</td><td>' + s.department + '</td>';
+        if (showMarks) html += '<td>' + s.marks + '</td><td>' + (s.percentage !== null ? s.percentage + '%' : '-') + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+}
 </script>
 {% endblock %}

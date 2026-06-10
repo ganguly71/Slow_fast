@@ -60,9 +60,10 @@ def send_remedial_notification(faculty_email, student_name, subject, marks, reme
     thread.start()
 
 
-def send_remedial_batch_notification(faculty_email, assignment_name, subject, student_list, remedial_date):
+def send_remedial_batch_notification(faculty_email, assignment_name, subject, student_list, remedial_date, absent_list=None):
     """Send a single consolidated email to the faculty with the full list of
-    slow-learner students (name + roll number) who will attend the remedial.
+    slow-learner students (name + roll number) who will attend the remedial,
+    and optionally a separate list of absent students.
 
     Args:
         faculty_email: email address of the assigned faculty
@@ -70,6 +71,7 @@ def send_remedial_batch_notification(faculty_email, assignment_name, subject, st
         subject: subject code (e.g. "COA")
         student_list: list of dicts with keys 'name', 'roll_no', 'marks'
         remedial_date: datetime of the scheduled remedial class
+        absent_list: optional list of dicts with keys 'name', 'roll_no'
     """
     api_key = os.environ.get('BREVO_API_KEY')
     if not api_key:
@@ -78,7 +80,7 @@ def send_remedial_batch_notification(faculty_email, assignment_name, subject, st
 
     sender_email = os.environ.get('SENDER_EMAIL', 'adityava49cse@gmail.com')
 
-    # Build the student table rows
+    # Build the slow-learner student table rows
     student_rows = ""
     for idx, s in enumerate(student_list, 1):
         student_rows += f"""
@@ -89,19 +91,17 @@ def send_remedial_batch_notification(faculty_email, assignment_name, subject, st
             <td style="padding:8px; border:1px solid #ddd; text-align:center;">{s['marks']}</td>
         </tr>"""
 
-    html_content = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <h2 style="color: #2c3e50;">Remedial Class Scheduled</h2>
-        <p>Hello,</p>
-        <p>A remedial class has been booked for the assignment <strong>{assignment_name}</strong>
-           in <strong>{subject}</strong>.</p>
-        <p><strong>Remedial Date:</strong> {remedial_date.strftime('%Y-%m-%d %H:%M')}</p>
+    # Build slow learners section
+    slow_section = ""
+    if student_list:
+        slow_section = f"""
+        <h3 style="color: #e67e22; margin-top: 24px;">Slow Learners — Remedial Required</h3>
         <p>The following <strong>{len(student_list)}</strong> student(s) scored below the threshold
            and are expected to attend:</p>
 
         <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
             <thead>
-                <tr style="background-color: #3498db; color: white;">
+                <tr style="background-color: #e67e22; color: white;">
                     <th style="padding:8px; border:1px solid #ddd;">#</th>
                     <th style="padding:8px; border:1px solid #ddd;">Roll No</th>
                     <th style="padding:8px; border:1px solid #ddd;">Student Name</th>
@@ -112,6 +112,48 @@ def send_remedial_batch_notification(faculty_email, assignment_name, subject, st
                 {student_rows}
             </tbody>
         </table>
+        """
+
+    # Build absent students section
+    absent_section = ""
+    if absent_list:
+        absent_rows = ""
+        for idx, s in enumerate(absent_list, 1):
+            absent_rows += f"""
+            <tr>
+                <td style="padding:8px; border:1px solid #ddd; text-align:center;">{idx}</td>
+                <td style="padding:8px; border:1px solid #ddd;">{s['roll_no']}</td>
+                <td style="padding:8px; border:1px solid #ddd;">{s['name']}</td>
+            </tr>"""
+
+        absent_section = f"""
+        <h3 style="color: #e74c3c; margin-top: 24px;">Absent Students</h3>
+        <p>The following <strong>{len(absent_list)}</strong> student(s) were absent for this assignment:</p>
+
+        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+            <thead>
+                <tr style="background-color: #e74c3c; color: white;">
+                    <th style="padding:8px; border:1px solid #ddd;">#</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Roll No</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Student Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {absent_rows}
+            </tbody>
+        </table>
+        """
+
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px;">
+        <h2 style="color: #2c3e50;">Remedial Class Scheduled</h2>
+        <p>Hello,</p>
+        <p>A remedial class has been booked for the assignment <strong>{assignment_name}</strong>
+           in <strong>{subject}</strong>.</p>
+        <p><strong>Remedial Date:</strong> {remedial_date.strftime('%Y-%m-%d %H:%M')}</p>
+
+        {slow_section}
+        {absent_section}
 
         <p>Please prepare accordingly.</p>
         <p>Regards,<br>Automated Academics System</p>

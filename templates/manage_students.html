@@ -96,6 +96,11 @@
                                 <td>{{ student.department }}</td>
                                 <td class="text-end">
                                     <div class="d-inline-flex gap-2">
+                                        <!-- View Details Button -->
+                                        <a href="{{ url_for('main.student_detail', student_id=student.id) }}"
+                                           class="btn btn-sm btn-outline-info" title="View student details">
+                                            <i class="bi bi-eye-fill"></i> Details
+                                        </a>
                                         <!-- Edit Button (Triggers JS modal populate) -->
                                         <button class="btn btn-sm btn-outline-primary" 
                                                 data-bs-toggle="modal" 

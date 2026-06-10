@@ -6,48 +6,113 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-calendar-check"></i> Remedial Class Schedules</h5>
-                <p class="text-muted">These are generated when "Book Remedial" is clicked on an assignment with slow learners.</p>
+                <p class="text-muted">Remedial classes are grouped by assignment. One faculty is assigned per subject per assignment.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th>Schedule ID</th>
-                                <th>Date &amp; Time</th>
-                                <th>Student (Roll No)</th>
+                                <th>Assignment</th>
                                 <th>Subject</th>
+                                <th>Date &amp; Time</th>
                                 <th>Assigned Faculty</th>
+                                <th>Students</th>
                                 <th class="text-center">Status</th>
+                                <th class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for schedule in schedules %}
-                            <tr class="{{ 'table-success' if schedule.is_done else '' }}">
-                                <td>{{ schedule.id }}</td>
-                                <td><strong>{{ schedule.date.strftime('%Y-%m-%d %H:%M') }}</strong></td>
-                                <td>{{ schedule.student.name }} ({{ schedule.student.roll_no }})</td>
-                                <td>{{ schedule.subject }}</td>
-                                <td>{{ schedule.faculty.name }}</td>
+                            {% for group in remedial_groups %}
+                            <tr class="{{ 'table-success' if group.all_done else '' }}">
+                                <td><strong>{{ group.assignment_name }}</strong></td>
+                                <td><span class="badge bg-primary">{{ group.subject }}</span></td>
+                                <td><strong>{{ group.date.strftime('%Y-%m-%d %H:%M') }}</strong></td>
+                                <td>
+                                    <i class="bi bi-person-fill text-primary"></i> {{ group.faculty_name }}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#rem_{{ loop.index }}">
+                                        {{ group.students|length }} student(s) <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                </td>
                                 <td class="text-center">
-                                    <form method="POST"
-                                          action="{{ url_for('main.toggle_remedial_done', schedule_id=schedule.id) }}"
-                                          style="display:inline;">
-                                        {% if schedule.is_done %}
-                                        <button type="submit" class="btn btn-sm btn-success"
-                                                title="Click to mark as Pending">
-                                            <i class="bi bi-check-circle-fill"></i> Done
-                                        </button>
-                                        {% else %}
+                                    {% if group.all_done %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> All Done</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if group.all_done %}
+                                    <form method="POST" action="{{ url_for('main.toggle_group_done') }}" style="display:inline;">
+                                        {% for sid in group.schedule_ids %}
+                                        <input type="hidden" name="schedule_ids" value="{{ sid }}">
+                                        {% endfor %}
+                                        <input type="hidden" name="mark_as" value="pending">
                                         <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                                title="Click to mark as Done">
-                                            <i class="bi bi-circle"></i> Pending
+                                                title="Mark all as Pending">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Undo
                                         </button>
-                                        {% endif %}
                                     </form>
+                                    {% else %}
+                                    <form method="POST" action="{{ url_for('main.toggle_group_done') }}" style="display:inline;">
+                                        {% for sid in group.schedule_ids %}
+                                        <input type="hidden" name="schedule_ids" value="{{ sid }}">
+                                        {% endfor %}
+                                        <input type="hidden" name="mark_as" value="done">
+                                        <button type="submit" class="btn btn-sm btn-success"
+                                                title="Mark all as Done">
+                                            <i class="bi bi-check2-all"></i> Mark All Done
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <!-- Collapsible Student List -->
+                            <tr class="collapse" id="rem_{{ loop.index }}">
+                                <td colspan="7" class="p-0">
+                                    <table class="table table-sm mb-0 table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Roll No</th>
+                                                <th>Student Name</th>
+                                                <th class="text-center">Individual Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for s in group.students %}
+                                            <tr class="{{ 'table-success' if s.is_done else '' }}">
+                                                <td>{{ loop.index }}</td>
+                                                <td>{{ s.roll_no }}</td>
+                                                <td>{{ s.name }}</td>
+                                                <td class="text-center">
+                                                    <form method="POST"
+                                                          action="{{ url_for('main.toggle_remedial_done', schedule_id=s.schedule_id) }}"
+                                                          style="display:inline;">
+                                                        {% if s.is_done %}
+                                                        <button type="submit" class="btn btn-sm btn-success"
+                                                                title="Click to mark as Pending">
+                                                            <i class="bi bi-check-circle-fill"></i> Done
+                                                        </button>
+                                                        {% else %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                                title="Click to mark as Done">
+                                                            <i class="bi bi-circle"></i> Pending
+                                                        </button>
+                                                        {% endif %}
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6" class="text-center">No remedial classes scheduled at this time.</td>
+                                <td colspan="7" class="text-center">No remedial classes scheduled at this time.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
