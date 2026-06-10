@@ -589,6 +589,18 @@ def book_remedial(group_id):
     return redirect(url_for('main.manage_assessments'))
 
 
+@main.route('/assessments/delete/<int:group_id>', methods=['POST'])
+@login_required
+def delete_assignment(group_id):
+    group = AssignmentGroup.query.get_or_404(group_id)
+    # Manually delete remedials to avoid FK constraints if cascade isn't fully set up on both sides
+    RemedialSchedule.query.filter_by(assignment_group_id=group.id).delete()
+    db.session.delete(group)
+    db.session.commit()
+    flash(f'Assignment "{group.name}" deleted successfully.', 'success')
+    return redirect(url_for('main.manage_assessments'))
+
+
 # ─── Assignment Stats API (Feature 4) ────────────────────────────────────────
 
 @main.route('/api/assignment_stats/<int:group_id>')
