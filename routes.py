@@ -489,11 +489,15 @@ def manage_assessments():
     groups = AssignmentGroup.query.order_by(AssignmentGroup.date.desc()).all()
     students = Student.query.order_by(Student.roll_no).all()
     departments = sorted(set(s.department for s in students if s.department))
+    faculty_members = User.query.filter_by(role='faculty').all()
+    # also add admin if admin is acting as faculty, but usually all users can teach in this app
+    all_users = User.query.all()
     return render_template('manage_assessments.html',
                            groups=groups,
                            students=students,
                            subjects=SUBJECTS,
-                           departments=departments)
+                           departments=departments,
+                           all_users=all_users)
 
 
 @main.route('/assessments/book_remedial/<int:group_id>', methods=['POST'])
@@ -509,10 +513,16 @@ def book_remedial(group_id):
         return redirect(url_for('main.manage_assessments'))
 
     threshold = (group.threshold_percent / 100.0) * group.total_marks
-    subject_faculty = find_faculty_for_subject(group.subject)
-    assigned_faculty_id = subject_faculty.id if subject_faculty else current_user.id
-    faculty_email = subject_faculty.email if subject_faculty else current_user.email
-    faculty_name = subject_faculty.name if subject_faculty else current_user.name
+    
+    faculty_id_str = request.form.get('faculty_id')
+    if not faculty_id_str:
+        flash('Please select a faculty member.', 'danger')
+        return redirect(url_for('main.manage_assessments'))
+        
+    selected_faculty = User.query.get_or_404(int(faculty_id_str))
+    assigned_faculty_id = selected_faculty.id
+    faculty_email = selected_faculty.email
+    faculty_name = selected_faculty.name
 
     remedial_date = get_next_available_slot()
     slow_students = []
