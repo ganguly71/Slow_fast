@@ -646,6 +646,113 @@ def assignment_stats(group_id):
     })
 
 
+@main.route('/assessments/edit_marks/<int:assessment_id>', methods=['POST'])
+@login_required
+def edit_assessment_marks(assessment_id):
+    assessment = Assessment.query.get_or_404(assessment_id)
+    group = assessment.assignment_group
+    if not group:
+        flash('Assignment group not found for this assessment.', 'danger')
+        return redirect(url_for('main.manage_assessments'))
+
+    marks_val = request.form.get('marks', '').strip()
+    if not marks_val:
+        flash('Marks field cannot be empty.', 'danger')
+        return redirect(url_for('main.manage_assessments'))
+
+    if marks_val.upper() == 'A':
+        new_marks = -1.0
+    else:
+        try:
+            new_marks = float(marks_val)
+            if new_marks < 0:
+                flash('Marks cannot be negative.', 'danger')
+                return redirect(url_for('main.manage_assessments'))
+            if new_marks > group.total_marks:
+                flash(f'Marks cannot exceed the total marks of {group.total_marks}.', 'danger')
+                return redirect(url_for('main.manage_assessments'))
+        except ValueError:
+            flash('Invalid marks input. Enter a number or "A" for absent.', 'danger')
+            return redirect(url_for('main.manage_assessments'))
+
+    # Update assessment marks
+    assessment.marks = new_marks
+    db.session.commit()
+
+    # Re-evaluate learner type and remedial schedule if remedial was already booked
+    student = assessment.student
+    threshold = (group.threshold_percent / 100.0) * group.total_marks
+
+    # 1. Determine classification type based on this assignment update
+    if new_marks == -1.0:
+        learner_type = None
+    elif new_marks < threshold:
+        learner_type = "Slow Learner"
+    else:
+        learner_type = "Fast Learner"
+
+    # 2. Update Classification table (if we have a valid classification type)
+    if learner_type:
+        classification = Classification.query.filter_by(
+            student_id=student.id, subject=group.subject
+        ).first()
+        if classification:
+            classification.learner_type = learner_type
+        else:
+            classification = Classification(
+                student_id=student.id,
+                subject=group.subject,
+                learner_type=learner_type
+            )
+            db.session.add(classification)
+
+    # 3. Synchronize RemedialSchedule if remedial_booked is True
+    if group.remedial_booked:
+        existing_remedial = RemedialSchedule.query.filter_by(
+            student_id=student.id,
+            assignment_group_id=group.id
+        ).first()
+
+        if new_marks == -1.0 or new_marks >= threshold:
+            # If absent or fast learner, delete any existing remedial schedule for this assignment
+            if existing_remedial:
+                db.session.delete(existing_remedial)
+                flash(f"Updated marks for {student.name}. Booked remedial schedule has been removed.", 'success')
+            else:
+                flash(f"Updated marks for {student.name}.", 'success')
+        else:
+            # If slow learner, make sure a remedial schedule exists for this assignment
+            if not existing_remedial:
+                # Find date and faculty from other remedial schedules in the same group, if any
+                sibling_remedial = RemedialSchedule.query.filter_by(
+                    assignment_group_id=group.id
+                ).first()
+                if sibling_remedial:
+                    remedial_date = sibling_remedial.date
+                    assigned_faculty_id = sibling_remedial.faculty_id
+                else:
+                    remedial_date = get_next_available_slot()
+                    subject_faculty = find_faculty_for_subject(group.subject)
+                    assigned_faculty_id = subject_faculty.id if subject_faculty else current_user.id
+
+                new_remedial = RemedialSchedule(
+                    student_id=student.id,
+                    subject=group.subject,
+                    date=remedial_date,
+                    faculty_id=assigned_faculty_id,
+                    assignment_group_id=group.id
+                )
+                db.session.add(new_remedial)
+                flash(f"Updated marks for {student.name}. Added to booked remedial schedule.", 'success')
+            else:
+                flash(f"Updated marks for {student.name}.", 'success')
+    else:
+        flash(f"Updated marks for {student.name}.", 'success')
+
+    db.session.commit()
+    return redirect(url_for('main.manage_assessments'))
+
+
 @main.route('/api/search_student')
 @login_required
 def search_student():

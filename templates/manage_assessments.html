@@ -164,48 +164,55 @@
                                     </div>
                                 </td>
                             </tr>
-                            <!-- Collapsible Details Row -->
-                            <tr class="collapse" id="details_{{ group.id }}">
-                                <td colspan="7" class="p-0">
-                                    <table class="table table-sm mb-0 table-bordered">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Roll No</th>
-                                                <th>Student Name</th>
-                                                <th>Marks</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for a in group.assessments %}
-                                            <tr>
-                                                <td>{{ a.student.roll_no }}</td>
-                                                <td>{{ a.student.name }}</td>
-                                                <td>
-                                                    {% if a.marks == -1 %}
-                                                    <span class="text-danger fw-bold">Absent</span>
-                                                    {% else %}
-                                                    {{ a.marks }} / {{ group.total_marks }}
-                                                    {% endif %}
-                                                </td>
-                                                <td>
-                                                    {% if a.marks == -1 %}
-                                                    <span class="badge bg-danger">Absent</span>
-                                                    {% else %}
-                                                    {% set pct = (a.marks / group.total_marks * 100) if group.total_marks > 0 else 0 %}
-                                                    {% if pct < group.threshold_percent %}
-                                                    <span class="badge bg-warning text-dark">Slow ({{ "%.0f"|format(pct) }}%)</span>
-                                                    {% else %}
-                                                    <span class="badge bg-success">Fast ({{ "%.0f"|format(pct) }}%)</span>
-                                                    {% endif %}
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </td>
-                            </tr>
+                             <!-- Collapsible Details Row -->
+                             <tr class="collapse" id="details_{{ group.id }}">
+                                 <td colspan="7" class="p-0">
+                                     <table class="table table-sm mb-0 table-bordered">
+                                         <thead class="table-light">
+                                             <tr>
+                                                 <th>Roll No</th>
+                                                 <th>Student Name</th>
+                                                 <th>Marks</th>
+                                                 <th>Status</th>
+                                                 <th class="text-end" style="width:100px;">Actions</th>
+                                             </tr>
+                                         </thead>
+                                         <tbody>
+                                             {% for a in group.assessments %}
+                                             <tr>
+                                                 <td>{{ a.student.roll_no }}</td>
+                                                 <td>{{ a.student.name }}</td>
+                                                 <td>
+                                                     {% if a.marks == -1 %}
+                                                     <span class="text-danger fw-bold">Absent</span>
+                                                     {% else %}
+                                                     {{ a.marks }} / {{ group.total_marks }}
+                                                     {% endif %}
+                                                 </td>
+                                                 <td>
+                                                     {% if a.marks == -1 %}
+                                                     <span class="badge bg-danger">Absent</span>
+                                                     {% else %}
+                                                     {% set pct = (a.marks / group.total_marks * 100) if group.total_marks > 0 else 0 %}
+                                                     {% if pct < group.threshold_percent %}
+                                                     <span class="badge bg-warning text-dark">Slow ({{ "%.0f"|format(pct) }}%)</span>
+                                                     {% else %}
+                                                     <span class="badge bg-success">Fast ({{ "%.0f"|format(pct) }}%)</span>
+                                                     {% endif %}
+                                                     {% endif %}
+                                                 </td>
+                                                 <td class="text-end">
+                                                     <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+                                                             onclick="openEditMarksModal({{ a.id }}, '{{ a.student.name|escape }}', '{{ a.student.roll_no|escape }}', '{{ 'A' if a.marks == -1 else a.marks }}', {{ group.total_marks }})">
+                                                         <i class="bi bi-pencil"></i> Edit
+                                                     </button>
+                                                 </td>
+                                             </tr>
+                                             {% endfor %}
+                                         </tbody>
+                                     </table>
+                                 </td>
+                             </tr>
                             {% else %}
                             <tr>
                                 <td colspan="7" class="text-center">No assignments found.</td>
@@ -240,6 +247,37 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Marks Modal -->
+<div class="modal fade" id="editMarksModal" tabindex="-1" aria-labelledby="editMarksModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editMarksForm" method="POST" action="">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="editMarksModalLabel">
+                        <i class="bi bi-pencil-square"></i> Edit Student Marks
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Student</label>
+                        <p class="form-control-plaintext mb-0" id="editStudentName"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMarksInput" class="form-label fw-bold">Marks (out of <span id="editTotalMarks"></span>)</label>
+                        <input type="text" class="form-control" id="editMarksInput" name="marks" required>
+                        <div class="form-text">Enter marks (e.g. 15.5) or type <strong>A</strong> for absent.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -453,6 +491,20 @@ function studentTable(students, showMarks) {
     });
     html += '</tbody></table>';
     return html;
+}
+
+function openEditMarksModal(assessmentId, studentName, rollNo, currentMarks, totalMarks) {
+    const modal = new bootstrap.Modal(document.getElementById('editMarksModal'));
+    document.getElementById('editStudentName').innerText = studentName + ' (' + rollNo + ')';
+    document.getElementById('editTotalMarks').innerText = totalMarks;
+
+    const marksInput = document.getElementById('editMarksInput');
+    marksInput.value = currentMarks;
+
+    const form = document.getElementById('editMarksForm');
+    form.action = '/assessments/edit_marks/' + assessmentId;
+
+    modal.show();
 }
 </script>
 {% endblock %}
