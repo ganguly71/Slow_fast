@@ -144,6 +144,12 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end flex-wrap">
+                                        <!-- Edit Threshold Button -->
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="openEditThresholdModal({{ group.id }}, '{{ group.name|escape }}', {{ group.threshold_percent }})"
+                                                title="Edit Threshold">
+                                            <i class="bi bi-sliders"></i> Threshold
+                                        </button>
                                         <!-- Assignment Stats Button -->
                                         <button type="button" class="btn btn-sm btn-outline-info"
                                                 onclick="showAssignmentStats({{ group.id }})"
@@ -313,6 +319,40 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning">Book Remedial</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Threshold Modal -->
+<div class="modal fade" id="editThresholdModal" tabindex="-1" aria-labelledby="editThresholdModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editThresholdForm" method="POST" action="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editThresholdModalLabel">
+                        <i class="bi bi-sliders"></i> Edit Threshold
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Assignment: <strong id="editThresholdAssignmentName"></strong></p>
+                    <div class="mb-3">
+                        <label for="thresholdPercentInput" class="form-label fw-bold">Slow Learner Threshold (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="thresholdPercentInput" name="threshold_percent" required min="0" max="100" step="0.1">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">Students scoring below this percentage will be marked as slow learners.</div>
+                    </div>
+                    <div class="alert alert-info py-2 mb-0">
+                        <i class="bi bi-info-circle"></i> If remedials have already been booked, updating the threshold will automatically sync learner classifications and remedial schedules.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -550,6 +590,17 @@ function openBookRemedialModal(groupId, assignmentName, subject) {
     
     const form = document.getElementById('bookRemedialForm');
     form.action = '/assessments/book_remedial/' + groupId;
+    
+    modal.show();
+}
+
+function openEditThresholdModal(groupId, assignmentName, currentThreshold) {
+    const modal = new bootstrap.Modal(document.getElementById('editThresholdModal'));
+    document.getElementById('editThresholdAssignmentName').innerText = assignmentName;
+    document.getElementById('thresholdPercentInput').value = currentThreshold;
+    
+    const form = document.getElementById('editThresholdForm');
+    form.action = '/assessments/edit_threshold/' + groupId;
     
     modal.show();
 }

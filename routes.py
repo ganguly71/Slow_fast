@@ -611,6 +611,89 @@ def delete_assignment(group_id):
     return redirect(url_for('main.manage_assessments'))
 
 
+@main.route('/assessments/edit_threshold/<int:group_id>', methods=['POST'])
+@login_required
+def edit_threshold(group_id):
+    group = AssignmentGroup.query.get_or_404(group_id)
+    try:
+        new_threshold = float(request.form.get('threshold_percent', group.threshold_percent))
+        if new_threshold < 0 or new_threshold > 100:
+            flash('Threshold percentage must be between 0 and 100.', 'danger')
+            return redirect(url_for('main.manage_assessments'))
+    except ValueError:
+        flash('Invalid threshold percentage.', 'danger')
+        return redirect(url_for('main.manage_assessments'))
+
+    group.threshold_percent = new_threshold
+    db.session.commit()
+
+    # Re-evaluate all students' classifications and remedials
+    threshold_marks = (new_threshold / 100.0) * group.total_marks
+    changes_made = 0
+
+    sibling_remedial = RemedialSchedule.query.filter_by(assignment_group_id=group.id).first()
+    remedial_date = sibling_remedial.date if sibling_remedial else get_next_available_slot()
+    if sibling_remedial:
+        assigned_faculty_id = sibling_remedial.faculty_id
+    else:
+        subject_faculty = find_faculty_for_subject(group.subject)
+        assigned_faculty_id = subject_faculty.id if subject_faculty else current_user.id
+
+    for assessment in group.assessments:
+        student = assessment.student
+        new_marks = assessment.marks
+
+        if new_marks == -1.0:
+            learner_type = None
+        elif new_marks < threshold_marks:
+            learner_type = "Slow Learner"
+        else:
+            learner_type = "Fast Learner"
+
+        if learner_type:
+            classification = Classification.query.filter_by(
+                student_id=student.id, subject=group.subject
+            ).first()
+            if classification:
+                classification.learner_type = learner_type
+            else:
+                classification = Classification(
+                    student_id=student.id,
+                    subject=group.subject,
+                    learner_type=learner_type
+                )
+                db.session.add(classification)
+
+        if group.remedial_booked:
+            existing_remedial = RemedialSchedule.query.filter_by(
+                student_id=student.id,
+                assignment_group_id=group.id
+            ).first()
+
+            if new_marks == -1.0 or new_marks >= threshold_marks:
+                if existing_remedial:
+                    db.session.delete(existing_remedial)
+                    changes_made += 1
+            else:
+                if not existing_remedial:
+                    new_remedial = RemedialSchedule(
+                        student_id=student.id,
+                        subject=group.subject,
+                        date=remedial_date,
+                        faculty_id=assigned_faculty_id,
+                        assignment_group_id=group.id
+                    )
+                    db.session.add(new_remedial)
+                    changes_made += 1
+
+    db.session.commit()
+    msg = f'Threshold updated to {new_threshold}% for "{group.name}".'
+    if group.remedial_booked and changes_made > 0:
+        msg += f' {changes_made} remedial schedule change(s) synced.'
+    flash(msg, 'success')
+    return redirect(url_for('main.manage_assessments'))
+
+
 # ─── Assignment Stats API (Feature 4) ────────────────────────────────────────
 
 @main.route('/api/assignment_stats/<int:group_id>')
