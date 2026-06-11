@@ -38,25 +38,14 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto">
         {% if current_user.is_authenticated %}
-        {% if current_user.get_id().startswith('student_') %}
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.student_tests') }}">Available Tests</a>
-        </li>
-        {% else %}
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('main.manage_students') }}">Students</a>
         </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="assessmentsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Assessments
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="assessmentsDropdown">
-            <li><a class="dropdown-item" href="{{ url_for('main.manage_assessments') }}">Manual Marks Entry</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('main.manage_online_tests') }}">Online Quizzes/Tests</a></li>
-          </ul>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('main.manage_assessments') }}">Assessments</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('main.remedial_schedules') }}">Remedial Classes</a>
@@ -70,13 +59,12 @@
         </li>
         {% endif %}
         {% endif %}
-        {% endif %}
       </ul>
       <ul class="navbar-nav">
         {% if current_user.is_authenticated %}
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-            {{ current_user.name }} ({% if current_user.get_id().startswith('student_') %}Student{% else %}{{ current_user.role }}{% endif %})
+            {{ current_user.name }} ({{ current_user.role }})
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="{{ url_for('main.logout') }}">Logout</a></li>

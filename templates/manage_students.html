@@ -161,13 +161,6 @@
                         <label for="edit_department" class="form-label">Department</label>
                         <input type="text" class="form-control" id="edit_department" name="department" required>
                     </div>
-                    {% if current_user.role == 'admin' %}
-                    <div class="mb-3 border-top pt-3">
-                        <label for="edit_password" class="form-label fw-semibold text-danger">Reset Password</label>
-                        <input type="password" class="form-control border-danger" id="edit_password" name="password" placeholder="Leave blank to keep unchanged">
-                        <small class="text-muted">Enter a new password here if you want to reset/change the student's password.</small>
-                    </div>
-                    {% endif %}
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
