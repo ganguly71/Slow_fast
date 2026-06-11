@@ -31,17 +31,30 @@ class User(db.Model, UserMixin):
         """Set subjects from a list."""
         self.subjects = ','.join(subject_list)
 
-class Student(db.Model):
+class Student(db.Model, UserMixin):
     __tablename__ = 'students'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     roll_no = db.Column(db.String(50), unique=True, nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     department = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)
     
     assessments = db.relationship('Assessment', backref='student', lazy=True, cascade="all, delete-orphan")
     classifications = db.relationship('Classification', backref='student', lazy=True, cascade="all, delete-orphan")
     remedials = db.relationship('RemedialSchedule', backref='student', lazy=True, cascade="all, delete-orphan")
+    test_assignments = db.relationship('TestAssignment', backref='student', lazy=True, cascade="all, delete-orphan")
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
+    def get_id(self):
+        return f"student_{self.id}"
 
 class AssignmentGroup(db.Model):
     """Represents a single assignment/exam given to a group of students."""
@@ -83,3 +96,55 @@ class RemedialSchedule(db.Model):
     is_done = db.Column(db.Boolean, default=False)
     faculty = db.relationship('User', backref='remedials_assigned')
     assignment_group = db.relationship('AssignmentGroup', backref='remedial_schedules')
+
+class OnlineTest(db.Model):
+    __tablename__ = 'online_tests'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(100), nullable=False)
+    duration_minutes = db.Column(db.Integer, nullable=False)
+    threshold_percent = db.Column(db.Float, nullable=False, default=50.0)
+    start_allowed = db.Column(db.Boolean, default=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    questions = db.relationship('Question', backref='online_test', lazy=True, cascade="all, delete-orphan")
+    assignments = db.relationship('TestAssignment', backref='online_test', lazy=True, cascade="all, delete-orphan")
+
+class Question(db.Model):
+    __tablename__ = 'questions'
+    id = db.Column(db.Integer, primary_key=True)
+    online_test_id = db.Column(db.Integer, db.ForeignKey('online_tests.id'), nullable=False)
+    question_text = db.Column(db.Text, nullable=False)
+    positive_marks = db.Column(db.Float, nullable=False)
+    negative_marks = db.Column(db.Float, nullable=False)
+
+    options = db.relationship('Option', backref='question', lazy=True, cascade="all, delete-orphan")
+
+class Option(db.Model):
+    __tablename__ = 'options'
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    option_text = db.Column(db.String(500), nullable=False)
+    is_correct = db.Column(db.Boolean, default=False)
+
+class TestAssignment(db.Model):
+    __tablename__ = 'test_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    online_test_id = db.Column(db.Integer, db.ForeignKey('online_tests.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    is_started = db.Column(db.Boolean, default=False)
+    start_time = db.Column(db.DateTime, nullable=True)
+    is_submitted = db.Column(db.Boolean, default=False)
+    submission_time = db.Column(db.DateTime, nullable=True)
+    score = db.Column(db.Float, nullable=True)
+
+    responses = db.relationship('StudentResponse', backref='assignment', lazy=True, cascade="all, delete-orphan")
+
+class StudentResponse(db.Model):
+    __tablename__ = 'student_responses'
+    id = db.Column(db.Integer, primary_key=True)
+    test_assignment_id = db.Column(db.Integer, db.ForeignKey('test_assignments.id'), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    option_id = db.Column(db.Integer, db.ForeignKey('options.id'), nullable=False)

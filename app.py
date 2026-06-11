@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from models import db, User
+from models import db, User, Student
 from flask_login import LoginManager
 
 def create_app():
@@ -24,7 +24,17 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        if str(user_id).startswith('student_'):
+            try:
+                student_id = int(str(user_id).split('_')[1])
+                return Student.query.get(student_id)
+            except (ValueError, IndexError):
+                return None
+        else:
+            try:
+                return User.query.get(int(user_id))
+            except ValueError:
+                return None
 
     from routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
@@ -43,6 +53,14 @@ def create_app():
         try:
             db.session.execute(db.text(
                 "ALTER TABLE remedial_schedules ADD COLUMN assignment_group_id INTEGER REFERENCES assignment_groups(id)"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()  # column already exists
+        # Migration: add password_hash to students
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE students ADD COLUMN password_hash VARCHAR(255)"
             ))
             db.session.commit()
         except Exception:

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 animate-fade-in">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+            <div>
+                <h2 class="fw-bold text-dark mb-0">Assigned Online Tests</h2>
+                <p class="text-muted mb-0">View and attempt your assignments here.</p>
+            </div>
+            <span class="badge bg-primary fs-6 py-2 px-3">Student: {{ current_user.name }} ({{ current_user.roll_no }})</span>
+        </div>
+
+        <div class="row g-4">
+            {% for assignment in assignments %}
+            {% set test = assignment.online_test %}
+            {% set total_m = test.questions | map(attribute='positive_marks') | sum %}
+            
+            <div class="col-md-6">
+                <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; transition: all 0.2s;">
+                    <div class="card-header bg-light py-3 border-0 d-flex justify-content-between align-items-center">
+                        <span class="badge bg-secondary-subtle text-secondary fs-7">{{ test.subject }}</span>
+                        {% if assignment.is_submitted %}
+                        <span class="badge bg-success-subtle text-success fs-7"><i class="bi bi-check-circle-fill"></i> Submitted</span>
+                        {% elif assignment.is_started %}
+                        <span class="badge bg-warning-subtle text-warning fs-7"><i class="bi bi-clock-history"></i> In Progress</span>
+                        {% elif test.start_allowed %}
+                        <span class="badge bg-primary-subtle text-primary fs-7"><i class="bi bi-play-circle-fill"></i> Available</span>
+                        {% else %}
+                        <span class="badge bg-dark-subtle text-dark fs-7"><i class="bi bi-lock-fill"></i> Locked</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body p-4 d-flex flex-column">
+                        <h4 class="card-title fw-bold text-dark mb-3">{{ test.name }}</h4>
+                        
+                        <div class="row g-2 mb-4 text-muted small">
+                            <div class="col-6"><i class="bi bi-hourglass-split me-1 text-primary"></i> <strong>Duration:</strong> {{ test.duration_minutes }} mins</div>
+                            <div class="col-6"><i class="bi bi-question-circle me-1 text-primary"></i> <strong>Questions:</strong> {{ test.questions|length }}</div>
+                            <div class="col-6"><i class="bi bi-award me-1 text-primary"></i> <strong>Max Marks:</strong> {{ total_m }}</div>
+                            <div class="col-6"><i class="bi bi-sliders me-1 text-primary"></i> <strong>Pass Threshold:</strong> {{ test.threshold_percent }}%</div>
+                        </div>
+
+                        <div class="mt-auto pt-3 border-top">
+                            {% if assignment.is_submitted %}
+                            <div class="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
+                                <span><strong>Your Score:</strong></span>
+                                <span class="fs-5 fw-bold">{{ assignment.score }} / {{ total_m }}</span>
+                            </div>
+                            {% elif assignment.is_started %}
+                            <a href="{{ url_for('main.take_test', assignment_id=assignment.id) }}" class="btn btn-warning btn-lg w-100 fw-bold py-2.5" style="border-radius: 10px;">
+                                Resume Test <i class="bi bi-play-fill ms-1"></i>
+                            </a>
+                            {% elif test.start_allowed %}
+                            <a href="{{ url_for('main.take_test', assignment_id=assignment.id) }}" class="btn btn-primary btn-lg w-100 fw-bold py-2.5" style="border-radius: 10px;" onclick="return confirm('Are you sure you want to start this test now? The timer will start immediately.');">
+                                Start Test <i class="bi bi-play-fill ms-1"></i>
+                            </a>
+                            {% else %}
+                            <button class="btn btn-secondary btn-lg w-100 fw-bold py-2.5" disabled style="border-radius: 10px;">
+                                <i class="bi bi-lock-fill me-1"></i> Locked (Wait for Instructor)
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="card border-0 shadow-sm p-5" style="border-radius: 16px;">
+                    <i class="bi bi-clipboard-x fs-1 text-muted mb-3"></i>
+                    <h4 class="fw-bold text-dark">No Tests Assigned</h4>
+                    <p class="text-muted mb-0">You do not have any online tests or quizzes assigned to you at the moment.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
