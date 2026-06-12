@@ -38,6 +38,7 @@ class Student(db.Model):
     roll_no = db.Column(db.String(50), unique=True, nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     department = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)
     
     assessments = db.relationship('Assessment', backref='student', lazy=True, cascade="all, delete-orphan")
     classifications = db.relationship('Classification', backref='student', lazy=True, cascade="all, delete-orphan")
