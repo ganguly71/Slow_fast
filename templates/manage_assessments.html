@@ -3,6 +3,24 @@
 {% block content %}
 <div class="row">
     <div class="col-lg-5">
+        <div class="card mb-4 bg-light border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary"><i class="bi bi-cloud-download"></i> Fetch from UNNATI-Exams</h5>
+                <form method="POST" action="{{ url_for('main.fetch_exam') }}">
+                    <div class="mb-3">
+                        <label for="exam_id_code" class="form-label fw-bold">UNNATI EXAM ID</label>
+                        <input type="text" class="form-control" id="exam_id_code" name="exam_id_code" placeholder="e.g. EXAM-1A2B3C4D" required>
+                        <div class="form-text">Paste the Exam ID from UNNATI-Exams here.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fetch_threshold_percent" class="form-label fw-bold">Default Threshold (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" class="form-control" id="fetch_threshold_percent" name="fetch_threshold_percent" placeholder="50" value="50">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-download"></i> Fetch Assignment</button>
+                </form>
+            </div>
+        </div>
+
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-clipboard-plus"></i> Create Assignment</h5>

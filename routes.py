@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS
+from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS, Exam, ExamSubmission, Question, Option, ExamAllotment, StudentAnswer
 from mail_service import send_remedial_notification, send_remedial_batch_notification
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -498,6 +498,65 @@ def manage_assessments():
                            subjects=SUBJECTS,
                            departments=departments,
                            all_users=all_users)
+
+@main.route('/assessments/fetch_exam', methods=['POST'])
+@login_required
+def fetch_exam():
+    exam_id_code = request.form.get('exam_id_code', '').strip()
+    threshold_input = request.form.get('fetch_threshold_percent', '').strip()
+
+    if not exam_id_code:
+        flash('Exam ID is required.', 'danger')
+        return redirect(url_for('main.manage_assessments'))
+
+    try:
+        threshold_percent = float(threshold_input)
+        if threshold_percent < 0 or threshold_percent > 100:
+            threshold_percent = 50.0
+    except (TypeError, ValueError):
+        threshold_percent = 50.0
+
+    exam = Exam.query.filter_by(assignment_code=exam_id_code).first()
+    if not exam:
+        flash(f'Exam with ID {exam_id_code} not found.', 'danger')
+        return redirect(url_for('main.manage_assessments'))
+
+    # Check if we already imported it (avoid duplicates)
+    assignment_name = f"{exam.title} (Online Exam - {exam_id_code})"
+    existing_group = AssignmentGroup.query.filter_by(name=assignment_name).first()
+    if existing_group:
+        flash(f'Exam {exam_id_code} has already been fetched as "{assignment_name}".', 'warning')
+        return redirect(url_for('main.manage_assessments'))
+
+    total_exam_marks = sum(q.marks_awarded for q in exam.questions)
+
+    group = AssignmentGroup(
+        name=assignment_name,
+        subject=exam.subject,
+        total_marks=total_exam_marks,
+        threshold_percent=threshold_percent
+    )
+    db.session.add(group)
+    db.session.flush()
+
+    added_count = 0
+    for sub in exam.submissions:
+        if sub.status == 'completed':
+            marks = sub.score if sub.score is not None else -1.0
+            
+            assessment = Assessment(
+                student_id=sub.student_id,
+                subject=exam.subject,
+                marks=marks,
+                assignment_group_id=group.id
+            )
+            db.session.add(assessment)
+            added_count += 1
+
+    db.session.commit()
+    flash(f'Successfully fetched "{exam.title}" with {added_count} student records.', 'success')
+    return redirect(url_for('main.manage_assessments'))
+
 
 
 @main.route('/assessments/book_remedial/<int:group_id>', methods=['POST'])

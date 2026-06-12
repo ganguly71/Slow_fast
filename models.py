@@ -83,3 +83,68 @@ class RemedialSchedule(db.Model):
     is_done = db.Column(db.Boolean, default=False)
     faculty = db.relationship('User', backref='remedials_assigned')
     assignment_group = db.relationship('AssignmentGroup', backref='remedial_schedules')
+
+class Exam(db.Model):
+    __tablename__ = 'exams'
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_code = db.Column(db.String(50), unique=True, nullable=True)
+    title = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(100), nullable=False)
+    faculty_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    time_limit_mins = db.Column(db.Integer, nullable=False, default=30)
+    is_active = db.Column(db.Boolean, default=True)
+    allow_start = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    questions = db.relationship('Question', backref='exam', lazy=True, cascade="all, delete-orphan")
+    allotments = db.relationship('ExamAllotment', backref='exam', lazy=True, cascade="all, delete-orphan")
+    submissions = db.relationship('ExamSubmission', backref='exam', lazy=True, cascade="all, delete-orphan")
+    faculty = db.relationship('User', backref='created_exams_unnati', overlaps="created_exams")
+
+class Question(db.Model):
+    __tablename__ = 'questions'
+    id = db.Column(db.Integer, primary_key=True)
+    exam_id = db.Column(db.Integer, db.ForeignKey('exams.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    marks_awarded = db.Column(db.Float, nullable=False, default=1.0)
+    marks_deducted = db.Column(db.Float, nullable=False, default=0.0)
+
+    options = db.relationship('Option', backref='question', lazy=True, cascade="all, delete-orphan")
+
+class Option(db.Model):
+    __tablename__ = 'options'
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    is_correct = db.Column(db.Boolean, default=False)
+
+class ExamAllotment(db.Model):
+    __tablename__ = 'exam_allotments'
+    id = db.Column(db.Integer, primary_key=True)
+    exam_id = db.Column(db.Integer, db.ForeignKey('exams.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    
+    student = db.relationship('Student', backref='exam_allotments_unnati', overlaps="exam_allotments")
+
+class ExamSubmission(db.Model):
+    __tablename__ = 'exam_submissions'
+    id = db.Column(db.Integer, primary_key=True)
+    exam_id = db.Column(db.Integer, db.ForeignKey('exams.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    score = db.Column(db.Float, nullable=True)
+    status = db.Column(db.String(50), default='pending') # 'pending', 'completed'
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    
+    student = db.relationship('Student', backref='exam_submissions_unnati', overlaps="exam_submissions")
+
+class StudentAnswer(db.Model):
+    __tablename__ = 'student_answers'
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('exam_submissions.id'), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    option_id = db.Column(db.Integer, db.ForeignKey('options.id'), nullable=True)
+    
+    submission = db.relationship('ExamSubmission', backref=db.backref('answers', cascade="all, delete-orphan"))
+    question = db.relationship('Question')
+    option = db.relationship('Option')
