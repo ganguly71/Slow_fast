@@ -53,6 +53,24 @@ def create_app():
             admin.set_password('admin123')
             db.session.add(admin)
             db.session.commit()
+            
+        # Migration: Add exam_id to questions if it doesn't exist
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE questions ADD COLUMN exam_id INTEGER REFERENCES exams(id)"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        
+        # We also need to add marks_deducted if it doesn't exist just in case
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE questions ADD COLUMN marks_deducted FLOAT NOT NULL DEFAULT 0.0"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return app
 
