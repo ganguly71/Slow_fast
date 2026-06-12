@@ -58,6 +58,27 @@ def create_app():
                 except Exception:
                     db.session.rollback()
 
+        # Legacy columns cleanup to prevent NOT NULL constraint failures
+        legacy_cleanup = [
+            ("questions", "online_test_id"),
+            ("questions", "question_text"),
+            ("questions", "positive_marks"),
+            ("questions", "negative_marks"),
+            ("options", "option_text")
+        ]
+        for table_name, col_name in legacy_cleanup:
+            if inspector.has_table(table_name):
+                columns = [c['name'] for c in inspector.get_columns(table_name)]
+                if col_name in columns:
+                    try:
+                        cascade = " CASCADE" if "postgresql" in str(db.engine.url) else ""
+                        db.session.execute(db.text(
+                            f"ALTER TABLE {table_name} DROP COLUMN {col_name}{cascade}"
+                        ))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
     with app.app_context():
         db.create_all()
         run_migrations()
