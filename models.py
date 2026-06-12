@@ -99,7 +99,7 @@ class Exam(db.Model):
     questions = db.relationship('Question', backref='exam', lazy=True, cascade="all, delete-orphan")
     allotments = db.relationship('ExamAllotment', backref='exam', lazy=True, cascade="all, delete-orphan")
     submissions = db.relationship('ExamSubmission', backref='exam', lazy=True, cascade="all, delete-orphan")
-    faculty = db.relationship('User', backref='created_exams_unnati', overlaps="created_exams")
+    faculty = db.relationship('User', backref='created_exams_unnati')
 
 class Question(db.Model):
     __tablename__ = 'questions'
@@ -124,7 +124,7 @@ class ExamAllotment(db.Model):
     exam_id = db.Column(db.Integer, db.ForeignKey('exams.id'), nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     
-    student = db.relationship('Student', backref='exam_allotments_unnati', overlaps="exam_allotments")
+    student = db.relationship('Student', backref='exam_allotments_unnati')
 
 class ExamSubmission(db.Model):
     __tablename__ = 'exam_submissions'
@@ -136,7 +136,7 @@ class ExamSubmission(db.Model):
     started_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
     
-    student = db.relationship('Student', backref='exam_submissions_unnati', overlaps="exam_submissions")
+    student = db.relationship('Student', backref='exam_submissions_unnati')
 
 class StudentAnswer(db.Model):
     __tablename__ = 'student_answers'
