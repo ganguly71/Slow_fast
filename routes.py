@@ -1371,4 +1371,22 @@ def toggle_group_done():
 def reports():
     fast_learners = Classification.query.filter_by(learner_type='Fast Learner').all()
     slow_learners = Classification.query.filter_by(learner_type='Slow Learner').all()
-    return render_template('reports.html', fast_learners=fast_learners, slow_learners=slow_learners)
+    
+    from collections import Counter
+    # Aggregate statistics for charts
+    slow_by_subject = dict(Counter([c.subject for c in slow_learners]))
+    slow_by_dept = dict(Counter([c.student.department for c in slow_learners if c.student]))
+    slow_by_sem = dict(Counter([f"Sem {c.student.semester}" for c in slow_learners if c.student]))
+    
+    # Overview counts
+    total_fast = len(fast_learners)
+    total_slow = len(slow_learners)
+    
+    return render_template('reports.html',
+                           fast_learners=fast_learners,
+                           slow_learners=slow_learners,
+                           slow_by_subject=slow_by_subject,
+                           slow_by_dept=slow_by_dept,
+                           slow_by_sem=slow_by_sem,
+                           total_fast=total_fast,
+                           total_slow=total_slow)
