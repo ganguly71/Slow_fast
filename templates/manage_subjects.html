@@ -98,6 +98,12 @@
                 <h5 class="card-title fw-bold mb-3"><i class="bi bi-plus-circle text-primary"></i> Add New Subject</h5>
                 <form method="POST" action="{{ url_for('main.manage_subjects') }}">
                     <div class="mb-3">
+                        <label for="id" class="form-label fw-semibold">Subject ID (Optional)</label>
+                        <input type="number" class="form-control form-control-lg border-2" id="id" name="id" 
+                               placeholder="e.g. 101, 102" style="border-color: #dee2e6;">
+                        <div class="form-text">Specify a custom numeric ID. Leave blank to auto-increment.</div>
+                    </div>
+                    <div class="mb-3">
                         <label for="name" class="form-label fw-semibold">Subject Code / Name</label>
                         <input type="text" class="form-control form-control-lg border-2" id="name" name="name" 
                                placeholder="e.g. ML, Python, AI" required style="border-color: #dee2e6;">
@@ -224,6 +230,10 @@
             <form id="editSubjectForm" method="POST" action="">
                 <div class="modal-body p-4">
                     <div class="mb-3">
+                        <label for="edit_id" class="form-label fw-semibold">Subject ID</label>
+                        <input type="number" class="form-control form-control-lg border-2" id="edit_id" name="id" required style="border-color: #dee2e6;">
+                    </div>
+                    <div class="mb-3">
                         <label for="edit_name" class="form-label fw-semibold">New Subject Name / Code</label>
                         <input type="text" class="form-control form-control-lg border-2" id="edit_name" name="name" required style="border-color: #dee2e6;">
                         <div class="form-text mt-2 text-warning small">
@@ -252,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var form = editSubjectModal.querySelector('#editSubjectForm');
             form.action = '/subjects/edit/' + id;
             
+            editSubjectModal.querySelector('#edit_id').value = id;
             editSubjectModal.querySelector('#edit_name').value = name;
         });
     }

@@ -25,6 +25,23 @@
         .main-content {
             padding: 2rem 0;
         }
+        /* Active glowing navbar links */
+        .navbar-nav .nav-link.active {
+            color: #ffffff !important;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+            border-bottom: 2px solid #ffffff;
+            padding-bottom: 2px;
+        }
+        .navbar-nav .nav-link {
+            transition: all 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+            padding-bottom: 2px;
+        }
+        .navbar-nav .nav-link:hover {
+            color: #ffffff !important;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+        }
     </style>
 </head>
 <body>
@@ -39,29 +56,29 @@
       <ul class="navbar-nav me-auto">
         {% if current_user.is_authenticated %}
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+          <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">Dashboard</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.manage_students') }}">Students</a>
+          <a class="nav-link {% if request.endpoint == 'main.manage_students' or request.endpoint == 'main.student_detail' %}active{% endif %}" href="{{ url_for('main.manage_students') }}">Students</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.manage_assessments') }}">Assessments</a>
+          <a class="nav-link {% if request.endpoint == 'main.manage_assessments' %}active{% endif %}" href="{{ url_for('main.manage_assessments') }}">Assessments</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.remedial_schedules') }}">Remedial Classes</a>
+          <a class="nav-link {% if request.endpoint == 'main.remedial_schedules' %}active{% endif %}" href="{{ url_for('main.remedial_schedules') }}">Remedial Classes</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.reports') }}">Reports</a>
+          <a class="nav-link {% if request.endpoint == 'main.reports' %}active{% endif %}" href="{{ url_for('main.reports') }}">Reports</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.subject_hub') }}">Subject Hub</a>
+          <a class="nav-link {% if request.endpoint == 'main.subject_hub' %}active{% endif %}" href="{{ url_for('main.subject_hub') }}">Subject Hub</a>
         </li>
         {% if current_user.role == 'admin' %}
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.manage_subjects') }}">Subjects</a>
+          <a class="nav-link {% if request.endpoint == 'main.manage_subjects' %}active{% endif %}" href="{{ url_for('main.manage_subjects') }}">Subjects</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.manage_faculty') }}">Faculty</a>
+          <a class="nav-link {% if request.endpoint == 'main.manage_faculty' or request.endpoint == 'main.edit_faculty' %}active{% endif %}" href="{{ url_for('main.manage_faculty') }}">Faculty</a>
         </li>
         {% endif %}
         {% endif %}

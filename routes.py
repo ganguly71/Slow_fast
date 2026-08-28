@@ -413,6 +413,7 @@ def manage_subjects():
         return redirect(url_for('main.dashboard'))
         
     if request.method == 'POST':
+        id_val = request.form.get('id', '').strip()
         name = request.form.get('name', '').strip()
         if not name:
             flash('Subject name cannot be empty.', 'danger')
@@ -421,7 +422,20 @@ def manage_subjects():
             if existing:
                 flash(f'Subject "{name}" already exists.', 'warning')
             else:
+                custom_id = None
+                if id_val:
+                    try:
+                        custom_id = int(id_val)
+                        if Subject.query.get(custom_id):
+                            flash(f'Subject with ID {custom_id} already exists.', 'danger')
+                            return redirect(url_for('main.manage_subjects'))
+                    except ValueError:
+                        flash('Subject ID must be an integer.', 'danger')
+                        return redirect(url_for('main.manage_subjects'))
+                
                 new_subject = Subject(name=name, threshold=50.0, uncertainty=1.0)
+                if custom_id is not None:
+                    new_subject.id = custom_id
                 db.session.add(new_subject)
                 db.session.commit()
                 flash(f'Subject "{name}" added successfully with initial threshold of 50.0%.', 'success')
@@ -448,36 +462,52 @@ def edit_subject(subject_id):
         return redirect(url_for('main.dashboard'))
         
     subject = Subject.query.get_or_404(subject_id)
+    new_id_str = request.form.get('id', '').strip()
     new_name = request.form.get('name', '').strip()
     
     if not new_name:
         flash('Subject name cannot be empty.', 'danger')
-    else:
-        existing = Subject.query.filter(Subject.name == new_name, Subject.id != subject_id).first()
-        if existing:
-            flash(f'Another subject named "{new_name}" already exists.', 'danger')
-        else:
-            old_name = subject.name
-            subject.name = new_name
+        return redirect(request.referrer or url_for('main.manage_subjects'))
+        
+    existing_name = Subject.query.filter(Subject.name == new_name, Subject.id != subject_id).first()
+    if existing_name:
+        flash(f'Another subject named "{new_name}" already exists.', 'danger')
+        return redirect(request.referrer or url_for('main.manage_subjects'))
+        
+    if new_id_str:
+        try:
+            new_id = int(new_id_str)
+            if new_id != subject.id:
+                existing_id = Subject.query.get(new_id)
+                if existing_id:
+                    flash(f'Another subject with ID {new_id} already exists.', 'danger')
+                    return redirect(request.referrer or url_for('main.manage_subjects'))
+                subject.id = new_id
+                db.session.flush()
+        except ValueError:
+            flash('Subject ID must be an integer.', 'danger')
+            return redirect(request.referrer or url_for('main.manage_subjects'))
             
-            # Cascade name changes to text columns across all related tables
-            all_users = User.query.all()
-            for user in all_users:
-                user_subjects = user.get_subjects()
-                if old_name in user_subjects:
-                    new_user_subjects = [new_name if s == old_name else s for s in user_subjects]
-                    user.set_subjects(new_user_subjects)
-                    
-            AssignmentGroup.query.filter_by(subject=old_name).update({AssignmentGroup.subject: new_name})
-            Assessment.query.filter_by(subject=old_name).update({Assessment.subject: new_name})
-            Classification.query.filter_by(subject=old_name).update({Classification.subject: new_name})
-            RemedialSchedule.query.filter_by(subject=old_name).update({RemedialSchedule.subject: new_name})
-            Exam.query.filter_by(subject=old_name).update({Exam.subject: new_name})
-            
-            db.session.commit()
-            flash(f'Subject "{old_name}" renamed to "{new_name}" and all records updated successfully.', 'success')
-            
-    return redirect(url_for('main.manage_subjects'))
+    old_name = subject.name
+    subject.name = new_name
+    
+    if old_name != new_name:
+        all_users = User.query.all()
+        for user in all_users:
+            user_subjects = user.get_subjects()
+            if old_name in user_subjects:
+                new_user_subjects = [new_name if s == old_name else s for s in user_subjects]
+                user.set_subjects(new_user_subjects)
+                
+        AssignmentGroup.query.filter_by(subject=old_name).update({AssignmentGroup.subject: new_name})
+        Assessment.query.filter_by(subject=old_name).update({Assessment.subject: new_name})
+        Classification.query.filter_by(subject=old_name).update({Classification.subject: new_name})
+        RemedialSchedule.query.filter_by(subject=old_name).update({RemedialSchedule.subject: new_name})
+        Exam.query.filter_by(subject=old_name).update({Exam.subject: new_name})
+        
+    db.session.commit()
+    flash('Subject updated successfully.', 'success')
+    return redirect(request.referrer or url_for('main.manage_subjects'))
 
 @main.route('/subjects/delete/<int:subject_id>', methods=['POST'])
 @login_required
@@ -536,6 +566,7 @@ def subject_hub():
             flash('Access denied.', 'danger')
             return redirect(url_for('main.subject_hub'))
             
+        id_val = request.form.get('id', '').strip()
         name = request.form.get('name', '').strip()
         selected_faculty_ids = request.form.getlist('faculty_ids')
         
@@ -546,7 +577,20 @@ def subject_hub():
             if existing:
                 flash(f'Subject "{name}" already exists.', 'warning')
             else:
+                custom_id = None
+                if id_val:
+                    try:
+                        custom_id = int(id_val)
+                        if Subject.query.get(custom_id):
+                            flash(f'Subject with ID {custom_id} already exists.', 'danger')
+                            return redirect(url_for('main.subject_hub'))
+                    except ValueError:
+                        flash('Subject ID must be an integer.', 'danger')
+                        return redirect(url_for('main.subject_hub'))
+                
                 new_subject = Subject(name=name, threshold=50.0, uncertainty=1.0)
+                if custom_id is not None:
+                    new_subject.id = custom_id
                 db.session.add(new_subject)
                 db.session.flush()
                 

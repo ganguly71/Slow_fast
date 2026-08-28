@@ -171,6 +171,11 @@
             <form method="POST" action="{{ url_for('main.subject_hub') }}">
                 <div class="modal-body p-4">
                     <div class="mb-3">
+                        <label for="id" class="form-label fw-semibold">Subject ID (Optional)</label>
+                        <input type="number" class="form-control border-2" id="id" name="id" placeholder="e.g. 101, 102">
+                        <div class="form-text">Specify a custom numeric ID. Leave blank to auto-increment.</div>
+                    </div>
+                    <div class="mb-3">
                         <label for="name" class="form-label fw-semibold">Subject Code / Name</label>
                         <input type="text" class="form-control border-2" id="name" name="name" placeholder="e.g. DAA, DSA, Python" required>
                     </div>
