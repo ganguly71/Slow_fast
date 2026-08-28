@@ -8,6 +8,13 @@ db = SQLAlchemy()
 # Predefined subject list
 SUBJECTS = ['C', 'OS', 'COA', 'CN', 'DAA', 'DSA', 'DM']
 
+class Subject(db.Model):
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    threshold = db.Column(db.Float, nullable=False, default=50.0)    # current state x
+    uncertainty = db.Column(db.Float, nullable=False, default=1.0)  # state uncertainty P
+
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)

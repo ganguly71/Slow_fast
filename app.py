@@ -82,6 +82,15 @@ def create_app():
     with app.app_context():
         db.create_all()
         run_migrations()
+        
+        # Seed default subjects if database is empty
+        from models import Subject, SUBJECTS
+        if not Subject.query.first():
+            for name in SUBJECTS:
+                subj = Subject(name=name, threshold=50.0, uncertainty=1.0)
+                db.session.add(subj)
+            db.session.commit()
+
         # Create a default admin if none exists
         if not User.query.filter_by(role='admin').first():
             admin = User(name='Admin', email='admin@example.com', role='admin')

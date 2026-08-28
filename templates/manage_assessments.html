@@ -622,5 +622,29 @@ function openEditThresholdModal(groupId, assignmentName, currentThreshold) {
     
     modal.show();
 }
+
+// Dynamic threshold update based on selected subject
+document.addEventListener('DOMContentLoaded', function() {
+    const subjectSelect = document.getElementById('subject');
+    const thresholdInput = document.getElementById('threshold_percent');
+    
+    if (subjectSelect && thresholdInput) {
+        subjectSelect.addEventListener('change', function() {
+            const subject = this.value;
+            if (subject) {
+                fetch('/api/subject_threshold/' + encodeURIComponent(subject))
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        thresholdInput.value = data.threshold;
+                    })
+                    .catch(function(err) {
+                        console.error('Error fetching subject threshold:', err);
+                    });
+            } else {
+                thresholdInput.value = '50';
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS, Exam, ExamSubmission, Question, Option, ExamAllotment, StudentAnswer
+from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS, Exam, ExamSubmission, Question, Option, ExamAllotment, StudentAnswer, Subject
 from mail_service import send_remedial_notification, send_remedial_batch_notification
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -8,6 +8,107 @@ from sqlalchemy import func
 main = Blueprint('main', __name__)
 
 THRESHOLD_PERCENT = 50.0  # percentage threshold for slow/fast learner
+
+def get_all_subject_names():
+    return [s.name for s in Subject.query.order_by(Subject.name).all()]
+
+def update_subject_threshold(subject_name):
+    subject_obj = Subject.query.filter_by(name=subject_name).first()
+    if not subject_obj:
+        return
+    
+    # Initialize Kalman filter parameters
+    x = 50.0
+    P = 1.0
+    Q = 1.0
+    R = 4.0
+    
+    # Query all assignment groups of this subject, sorted by date ascending
+    groups = AssignmentGroup.query.filter_by(subject=subject_name).order_by(AssignmentGroup.date.asc()).all()
+    
+    for group in groups:
+        total_marks_sum = 0
+        present_count = 0
+        for a in group.assessments:
+            if a.marks != -1:
+                total_marks_sum += a.marks
+                present_count += 1
+        
+        if present_count == 0 or group.total_marks <= 0:
+            continue
+            
+        avg_score = total_marks_sum / present_count
+        z = (avg_score / group.total_marks) * 100.0
+        
+        # Kalman filter Predict step
+        x_pred = x
+        P_pred = P + Q
+        
+        # Kalman filter Update step
+        K = P_pred / (P_pred + R)
+        innovation = z - x_pred
+        x = x_pred + K * innovation
+        P = (1.0 - K) * P_pred
+        
+    subject_obj.threshold = round(x, 2)
+    subject_obj.uncertainty = round(P, 4)
+    db.session.commit()
+
+def get_subject_statistics():
+    subjects = Subject.query.order_by(Subject.name).all()
+    all_users = User.query.all()
+    
+    stats = []
+    for s in subjects:
+        # 1. Exams count
+        exams_count = AssignmentGroup.query.filter_by(subject=s.name).count()
+        
+        # 2. Avg marks percentage & Unique students count
+        assessments = Assessment.query.filter_by(subject=s.name).all()
+        
+        total_pct = 0.0
+        present_count = 0
+        unique_students = set()
+        
+        for a in assessments:
+            if a.marks != -1:
+                unique_students.add(a.student_id)
+                if a.assignment_group and a.assignment_group.total_marks > 0:
+                    total_pct += (a.marks / a.assignment_group.total_marks) * 100.0
+                    present_count += 1
+                    
+        avg_pct = round(total_pct / present_count, 1) if present_count > 0 else 0.0
+        students_count = len(unique_students)
+        
+        # 3. Assigned faculty
+        assigned_faculty = []
+        for u in all_users:
+            if s.name in u.get_subjects():
+                assigned_faculty.append({
+                    'id': u.id,
+                    'name': u.name,
+                    'role': u.role
+                })
+                
+        stats.append({
+            'id': s.id,
+            'name': s.name,
+            'threshold': s.threshold,
+            'uncertainty': s.uncertainty,
+            'exams_count': exams_count,
+            'avg_pct': avg_pct,
+            'students_count': students_count,
+            'faculty': assigned_faculty
+        })
+    return stats
+
+@main.route('/api/subject_threshold/<string:subject_name>')
+@login_required
+def get_subject_threshold(subject_name):
+    subject_obj = Subject.query.filter_by(name=subject_name).first()
+    if subject_obj:
+        return jsonify({'threshold': subject_obj.threshold})
+    return jsonify({'threshold': 50.0})
 
 @main.route('/')
 def index():
@@ -302,6 +403,202 @@ def student_detail(student_id):
                            assignment_details=assignment_details)
 
 
+# ─── Subject Admin Routes ──────────────────────────────────────────────────────
+
+@main.route('/subjects', methods=['GET', 'POST'])
+@login_required
+def manage_subjects():
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Subject name cannot be empty.', 'danger')
+        else:
+            existing = Subject.query.filter_by(name=name).first()
+            if existing:
+                flash(f'Subject "{name}" already exists.', 'warning')
+            else:
+                new_subject = Subject(name=name, threshold=50.0, uncertainty=1.0)
+                db.session.add(new_subject)
+                db.session.commit()
+                flash(f'Subject "{name}" added successfully with initial threshold of 50.0%.', 'success')
+                return redirect(url_for('main.manage_subjects'))
+                
+    subjects = Subject.query.order_by(Subject.name).all()
+    total_subjects = len(subjects)
+    avg_threshold = round(sum(s.threshold for s in subjects) / total_subjects, 2) if total_subjects > 0 else 0.0
+    most_volatile = max(subjects, key=lambda s: s.uncertainty) if subjects else None
+    most_stable = min(subjects, key=lambda s: s.uncertainty) if subjects else None
+    
+    return render_template('manage_subjects.html', 
+                           subjects=subjects,
+                           total_subjects=total_subjects,
+                           avg_threshold=avg_threshold,
+                           most_volatile=most_volatile,
+                           most_stable=most_stable)
+
+@main.route('/subjects/edit/<int:subject_id>', methods=['POST'])
+@login_required
+def edit_subject(subject_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    subject = Subject.query.get_or_404(subject_id)
+    new_name = request.form.get('name', '').strip()
+    
+    if not new_name:
+        flash('Subject name cannot be empty.', 'danger')
+    else:
+        existing = Subject.query.filter(Subject.name == new_name, Subject.id != subject_id).first()
+        if existing:
+            flash(f'Another subject named "{new_name}" already exists.', 'danger')
+        else:
+            old_name = subject.name
+            subject.name = new_name
+            
+            # Cascade name changes to text columns across all related tables
+            all_users = User.query.all()
+            for user in all_users:
+                user_subjects = user.get_subjects()
+                if old_name in user_subjects:
+                    new_user_subjects = [new_name if s == old_name else s for s in user_subjects]
+                    user.set_subjects(new_user_subjects)
+                    
+            AssignmentGroup.query.filter_by(subject=old_name).update({AssignmentGroup.subject: new_name})
+            Assessment.query.filter_by(subject=old_name).update({Assessment.subject: new_name})
+            Classification.query.filter_by(subject=old_name).update({Classification.subject: new_name})
+            RemedialSchedule.query.filter_by(subject=old_name).update({RemedialSchedule.subject: new_name})
+            Exam.query.filter_by(subject=old_name).update({Exam.subject: new_name})
+            
+            db.session.commit()
+            flash(f'Subject "{old_name}" renamed to "{new_name}" and all records updated successfully.', 'success')
+            
+    return redirect(url_for('main.manage_subjects'))
+
+@main.route('/subjects/delete/<int:subject_id>', methods=['POST'])
+@login_required
+def delete_subject(subject_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    subject = Subject.query.get_or_404(subject_id)
+    subject_name = subject.name
+    
+    # Remove subject from assigned subjects list of all users
+    all_users = User.query.all()
+    for user in all_users:
+        user_subjects = user.get_subjects()
+        if subject_name in user_subjects:
+            new_user_subjects = [s for s in user_subjects if s != subject_name]
+            user.set_subjects(new_user_subjects)
+            
+    db.session.delete(subject)
+    db.session.commit()
+    flash(f'Subject "{subject_name}" deleted successfully.', 'success')
+    return redirect(url_for('main.manage_subjects'))
+
+@main.route('/subjects/recalculate/<int:subject_id>', methods=['POST'])
+@login_required
+def recalculate_subject(subject_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    subject = Subject.query.get_or_404(subject_id)
+    update_subject_threshold(subject.name)
+    flash(f'Threshold and uncertainty for "{subject.name}" successfully recalculated via Kalman Filter.', 'success')
+    return redirect(url_for('main.manage_subjects'))
+
+@main.route('/subjects/recalculate_all', methods=['POST'])
+@login_required
+def recalculate_all_subjects():
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    subjects = Subject.query.all()
+    for subject in subjects:
+        update_subject_threshold(subject.name)
+    flash('Thresholds and uncertainty for all subjects recalculated successfully.', 'success')
+    return redirect(url_for('main.manage_subjects'))
+
+
+@main.route('/subject_hub', methods=['GET', 'POST'])
+@login_required
+def subject_hub():
+    if request.method == 'POST':
+        if current_user.role != 'admin':
+            flash('Access denied.', 'danger')
+            return redirect(url_for('main.subject_hub'))
+            
+        name = request.form.get('name', '').strip()
+        selected_faculty_ids = request.form.getlist('faculty_ids')
+        
+        if not name:
+            flash('Subject name cannot be empty.', 'danger')
+        else:
+            existing = Subject.query.filter_by(name=name).first()
+            if existing:
+                flash(f'Subject "{name}" already exists.', 'warning')
+            else:
+                new_subject = Subject(name=name, threshold=50.0, uncertainty=1.0)
+                db.session.add(new_subject)
+                db.session.flush()
+                
+                # Assign to checked faculty
+                for fid in selected_faculty_ids:
+                    user = User.query.get(int(fid))
+                    if user:
+                        user_subjects = user.get_subjects()
+                        if name not in user_subjects:
+                            user_subjects.append(name)
+                            user.set_subjects(user_subjects)
+                            
+                db.session.commit()
+                flash(f'Subject "{name}" created successfully and assigned to faculty.', 'success')
+                return redirect(url_for('main.subject_hub'))
+                
+    stats = get_subject_statistics()
+    all_users = User.query.all()
+    
+    return render_template('subject_hub.html',
+                           stats=stats,
+                           all_eligible_users=all_users,
+                           total_subjects=len(stats))
+
+
+@main.route('/subjects/assign_faculty/<int:subject_id>', methods=['POST'])
+@login_required
+def assign_faculty_to_subject(subject_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.subject_hub'))
+        
+    subject = Subject.query.get_or_404(subject_id)
+    selected_faculty_ids = [int(fid) for fid in request.form.getlist('faculty_ids')]
+    
+    all_users = User.query.all()
+    for user in all_users:
+        user_subjects = user.get_subjects()
+        if user.id in selected_faculty_ids:
+            if subject.name not in user_subjects:
+                user_subjects.append(subject.name)
+                user.set_subjects(user_subjects)
+        else:
+            if subject.name in user_subjects:
+                user_subjects = [s for s in user_subjects if s != subject.name]
+                user.set_subjects(user_subjects)
+                
+    db.session.commit()
+    flash(f'Faculty assignments for subject "{subject.name}" updated successfully.', 'success')
+    return redirect(url_for('main.subject_hub'))
+
+
 # ─── Faculty Routes ──────────────────────────────────────────────────────────
 
 @main.route('/faculty', methods=['GET', 'POST'])
@@ -330,7 +627,7 @@ def manage_faculty():
             flash('Faculty added successfully.', 'success')
             
     faculty = User.query.all()
-    return render_template('manage_faculty.html', faculty=faculty, subjects=SUBJECTS)
+    return render_template('manage_faculty.html', faculty=faculty, subjects=get_all_subject_names())
 
 @main.route('/faculty/edit/<int:user_id>', methods=['GET', 'POST'])
 @login_required
@@ -366,7 +663,7 @@ def edit_faculty(user_id):
             flash('Faculty details updated successfully.', 'success')
             return redirect(url_for('main.manage_faculty'))
             
-    return render_template('edit_faculty.html', user=user, subjects=SUBJECTS)
+    return render_template('edit_faculty.html', user=user, subjects=get_all_subject_names())
 
 @main.route('/faculty/delete/<int:user_id>', methods=['POST'])
 @login_required
@@ -419,7 +716,7 @@ def manage_assessments():
         if not assignment_name:
             flash('Assignment name is required.', 'danger')
             return redirect(url_for('main.manage_assessments'))
-        if subject not in SUBJECTS:
+        if subject not in get_all_subject_names():
             flash('Invalid subject selected.', 'danger')
             return redirect(url_for('main.manage_assessments'))
         try:
@@ -482,6 +779,7 @@ def manage_assessments():
             added_count += 1
 
         db.session.commit()
+        update_subject_threshold(subject)
         flash(f'Assignment "{assignment_name}" created with {added_count} student(s).', 'success')
         return redirect(url_for('main.manage_assessments'))
 
@@ -495,7 +793,7 @@ def manage_assessments():
     return render_template('manage_assessments.html',
                            groups=groups,
                            students=students,
-                           subjects=SUBJECTS,
+                           subjects=get_all_subject_names(),
                            departments=departments,
                            all_users=all_users)
 
@@ -509,17 +807,26 @@ def fetch_exam():
         flash('Exam ID is required.', 'danger')
         return redirect(url_for('main.manage_assessments'))
 
-    try:
-        threshold_percent = float(threshold_input)
-        if threshold_percent < 0 or threshold_percent > 100:
-            threshold_percent = 50.0
-    except (TypeError, ValueError):
-        threshold_percent = 50.0
-
     exam = Exam.query.filter_by(assignment_code=exam_id_code).first()
     if not exam:
         flash(f'Exam with ID {exam_id_code} not found.', 'danger')
         return redirect(url_for('main.manage_assessments'))
+
+    # Ensure subject exists in DB
+    subject_obj = Subject.query.filter_by(name=exam.subject).first()
+    if not subject_obj:
+        subject_obj = Subject(name=exam.subject, threshold=50.0, uncertainty=1.0)
+        db.session.add(subject_obj)
+        db.session.commit()
+
+    default_threshold = subject_obj.threshold
+
+    try:
+        threshold_percent = float(threshold_input)
+        if threshold_percent < 0 or threshold_percent > 100:
+            threshold_percent = default_threshold
+    except (TypeError, ValueError):
+        threshold_percent = default_threshold
 
     # Check if we already imported it (avoid duplicates)
     assignment_name = f"{exam.title} (Online Exam - {exam_id_code})"
@@ -554,6 +861,7 @@ def fetch_exam():
             added_count += 1
 
     db.session.commit()
+    update_subject_threshold(exam.subject)
     flash(f'Successfully fetched "{exam.title}" with {added_count} student records.', 'success')
     return redirect(url_for('main.manage_assessments'))
 
@@ -662,10 +970,12 @@ def book_remedial(group_id):
 @login_required
 def delete_assignment(group_id):
     group = AssignmentGroup.query.get_or_404(group_id)
+    subject = group.subject
     # Manually delete remedials to avoid FK constraints if cascade isn't fully set up on both sides
     RemedialSchedule.query.filter_by(assignment_group_id=group.id).delete()
     db.session.delete(group)
     db.session.commit()
+    update_subject_threshold(subject)
     flash(f'Assignment "{group.name}" deleted successfully.', 'success')
     return redirect(url_for('main.manage_assessments'))
 
@@ -746,6 +1056,7 @@ def edit_threshold(group_id):
                     changes_made += 1
 
     db.session.commit()
+    update_subject_threshold(group.subject)
     msg = f'Threshold updated to {new_threshold}% for "{group.name}".'
     if group.remedial_booked and changes_made > 0:
         msg += f' {changes_made} remedial schedule change(s) synced.'
@@ -914,6 +1225,7 @@ def edit_assessment_marks(assessment_id):
         flash(f"Updated marks for {student.name}.", 'success')
 
     db.session.commit()
+    update_subject_threshold(group.subject)
     return redirect(url_for('main.manage_assessments'))
 
 
