@@ -1331,23 +1331,38 @@ def edit_assessment_marks(assessment_id):
 @main.route('/api/search_student')
 @login_required
 def search_student():
-    """AJAX endpoint: search student by roll number."""
+    """AJAX endpoint: search student by roll number and optional semester."""
     roll_no = request.args.get('roll_no', '').strip()
-    if not roll_no:
+    semester = request.args.get('semester', '').strip()
+    if not roll_no and not semester:
         return jsonify([])
     
-    # Search for students whose roll_no starts with or contains the query
-    students = Student.query.filter(Student.roll_no.ilike(f'%{roll_no}%')).limit(10).all()
-    results = [{'id': s.id, 'name': s.name, 'roll_no': s.roll_no} for s in students]
+    query = Student.query
+    if roll_no:
+        query = query.filter(Student.roll_no.ilike(f'%{roll_no}%'))
+    if semester:
+        try:
+            query = query.filter(Student.semester == int(semester))
+        except (ValueError, TypeError):
+            pass
+    students = query.limit(10).all()
+    results = [{'id': s.id, 'name': s.name, 'roll_no': s.roll_no, 'semester': s.semester, 'department': s.department} for s in students]
     return jsonify(results)
 
 
 @main.route('/api/all_students')
 @login_required
 def all_students_api():
-    """Return all students as JSON for the multi-select picker."""
-    students = Student.query.order_by(Student.roll_no).all()
-    results = [{'id': s.id, 'name': s.name, 'roll_no': s.roll_no, 'department': s.department} for s in students]
+    """Return all students as JSON for the multi-select picker with optional semester filter."""
+    semester = request.args.get('semester', '').strip()
+    query = Student.query
+    if semester:
+        try:
+            query = query.filter(Student.semester == int(semester))
+        except (ValueError, TypeError):
+            pass
+    students = query.order_by(Student.roll_no).all()
+    results = [{'id': s.id, 'name': s.name, 'roll_no': s.roll_no, 'department': s.department, 'semester': s.semester} for s in students]
     return jsonify(results)
 
 
@@ -1380,6 +1395,8 @@ def remedial_schedules():
         grouped[key]['students'].append({
             'name': s.student.name,
             'roll_no': s.student.roll_no,
+            'semester': s.student.semester,
+            'department': s.student.department,
             'is_done': s.is_done,
             'schedule_id': s.id
         })
@@ -1390,7 +1407,7 @@ def remedial_schedules():
     # Sort by date desc
     remedial_groups = sorted(grouped.values(), key=lambda x: x['date'], reverse=True)
 
-    return render_template('remedial_schedules.html', remedial_groups=remedial_groups)
+    return render_template('remedial_schedules.html', remedial_groups=remedial_groups, subjects=get_all_subject_names())
 
 
 @main.route('/remedials/toggle_done/<int:schedule_id>', methods=['POST'])

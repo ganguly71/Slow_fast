@@ -7,8 +7,50 @@
             <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-calendar-check"></i> Remedial Class Schedules</h5>
                 <p class="text-muted">Remedial classes are grouped by assignment. One faculty is assigned per subject per assignment.</p>
+
+                <!-- Filter Bar -->
+                <div class="row g-2 mb-3 bg-light p-3 rounded-3" id="filterBar">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control form-control-sm border-2" id="filterSearch"
+                               placeholder="Search Assignment, Faculty, Student...">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm border-2" id="filterSubject">
+                            <option value="">All Subjects</option>
+                            {% for subj in subjects %}
+                            <option value="{{ subj|lower }}">{{ subj }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm border-2" id="filterSem">
+                            <option value="">All Semesters</option>
+                            <option value="1">Semester 1</option>
+                            <option value="2">Semester 2</option>
+                            <option value="3">Semester 3</option>
+                            <option value="4">Semester 4</option>
+                            <option value="5">Semester 5</option>
+                            <option value="6">Semester 6</option>
+                            <option value="7">Semester 7</option>
+                            <option value="8">Semester 8</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm border-2" id="filterStatus">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="done">All Done</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 d-flex">
+                        <button class="btn btn-sm btn-outline-secondary w-100" id="clearFilters" title="Clear filters">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle">
+                    <table class="table table-bordered align-middle" id="remedialsTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Assignment</th>
@@ -22,7 +64,14 @@
                         </thead>
                         <tbody>
                             {% for group in remedial_groups %}
-                            <tr class="{{ 'table-success' if group.all_done else '' }}">
+                            <tr class="remedial-row {{ 'table-success' if group.all_done else '' }}"
+                                data-assignment="{{ group.assignment_name|lower }}"
+                                data-subject="{{ group.subject|lower }}"
+                                data-faculty="{{ group.faculty_name|lower }}"
+                                data-status="{{ 'done' if group.all_done else 'pending' }}"
+                                data-sems="{% for s in group.students %}{{ s.semester }},{% endfor %}"
+                                data-students="{% for s in group.students %}{{ s.name|lower }} {{ s.roll_no|lower }} {% endfor %}"
+                                data-target-collapse="#rem_{{ loop.index }}">
                                 <td><strong>{{ group.assignment_name }}</strong></td>
                                 <td><span class="badge bg-primary">{{ group.subject }}</span></td>
                                 <td><strong>{{ group.date.strftime('%Y-%m-%d %H:%M') }} <span class="badge bg-light text-secondary border">IST</span></strong></td>
@@ -83,9 +132,15 @@
                                         </thead>
                                         <tbody>
                                             {% for s in group.students %}
-                                            <tr class="{{ 'table-success' if s.is_done else '' }}">
+                                            <tr class="student-subrow {{ 'table-success' if s.is_done else '' }}"
+                                                data-sem="{{ s.semester }}"
+                                                data-name="{{ s.name|lower }}"
+                                                data-roll="{{ s.roll_no|lower }}">
                                                 <td>{{ loop.index }}</td>
-                                                <td>{{ s.roll_no }}</td>
+                                                <td>
+                                                    <span class="font-monospace fw-bold">{{ s.roll_no }}</span>
+                                                    <span class="badge bg-light text-secondary ms-1">Sem {{ s.semester }}</span>
+                                                </td>
                                                 <td>{{ s.name }}</td>
                                                 <td class="text-center">
                                                     <form method="POST"
@@ -115,11 +170,112 @@
                                 <td colspan="7" class="text-center">No remedial classes scheduled at this time.</td>
                             </tr>
                             {% endfor %}
+                            <tr id="noMatchingRemedials" style="display:none;">
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="bi bi-search fs-4 d-block mb-1"></i> No remedial classes match your search and filter criteria.
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
+                <div class="text-muted small mt-2" id="filterStatusText"></div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterSearch = document.getElementById('filterSearch');
+    const filterSubject = document.getElementById('filterSubject');
+    const filterSem = document.getElementById('filterSem');
+    const filterStatus = document.getElementById('filterStatus');
+    const clearBtn = document.getElementById('clearFilters');
+    const filterStatusText = document.getElementById('filterStatusText');
+    const rows = document.querySelectorAll('.remedial-row');
+    const noMatchingRow = document.getElementById('noMatchingRemedials');
+
+    function applyFilters() {
+        const qSearch = filterSearch.value.trim().toLowerCase();
+        const qSubj = filterSubject.value.trim().toLowerCase();
+        const qSem = filterSem.value.trim();
+        const qStat = filterStatus.value.trim().toLowerCase();
+
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const assignment = row.getAttribute('data-assignment') || '';
+            const subject = row.getAttribute('data-subject') || '';
+            const faculty = row.getAttribute('data-faculty') || '';
+            const students = row.getAttribute('data-students') || '';
+            const status = row.getAttribute('data-status') || '';
+            const sems = (row.getAttribute('data-sems') || '').split(',');
+
+            const matchSearch = !qSearch ||
+                assignment.indexOf(qSearch) !== -1 ||
+                subject.indexOf(qSearch) !== -1 ||
+                faculty.indexOf(qSearch) !== -1 ||
+                students.indexOf(qSearch) !== -1;
+
+            const matchSubj = !qSubj || subject === qSubj;
+            const matchSem = !qSem || sems.includes(qSem);
+            const matchStat = !qStat || status === qStat;
+
+            const collapseTarget = document.querySelector(row.getAttribute('data-target-collapse'));
+
+            if (matchSearch && matchSubj && matchSem && matchStat) {
+                row.style.display = '';
+                visibleCount++;
+                if (collapseTarget) {
+                    const studentRows = collapseTarget.querySelectorAll('.student-subrow');
+                    studentRows.forEach(function(sr) {
+                        const sSem = sr.getAttribute('data-sem');
+                        const sName = sr.getAttribute('data-name') || '';
+                        const sRoll = sr.getAttribute('data-roll') || '';
+                        const matchesStuSearch = !qSearch || sName.indexOf(qSearch) !== -1 || sRoll.indexOf(qSearch) !== -1 || assignment.indexOf(qSearch) !== -1 || subject.indexOf(qSearch) !== -1 || faculty.indexOf(qSearch) !== -1;
+                        const matchesStuSem = !qSem || sSem === qSem;
+                        if (matchesStuSearch && matchesStuSem) {
+                            sr.style.display = '';
+                        } else {
+                            sr.style.display = 'none';
+                        }
+                    });
+                }
+            } else {
+                row.style.display = 'none';
+                if (collapseTarget) {
+                    collapseTarget.classList.remove('show');
+                }
+            }
+        });
+
+        if (noMatchingRow) {
+            if (rows.length > 0 && visibleCount === 0) {
+                noMatchingRow.style.display = '';
+            } else {
+                noMatchingRow.style.display = 'none';
+            }
+        }
+
+        if (qSearch || qSubj || qSem || qStat) {
+            filterStatusText.textContent = 'Showing ' + visibleCount + ' of ' + rows.length + ' class(es)';
+        } else {
+            filterStatusText.textContent = '';
+        }
+    }
+
+    filterSearch.addEventListener('input', applyFilters);
+    filterSubject.addEventListener('change', applyFilters);
+    filterSem.addEventListener('change', applyFilters);
+    filterStatus.addEventListener('change', applyFilters);
+
+    clearBtn.addEventListener('click', function() {
+        filterSearch.value = '';
+        filterSubject.value = '';
+        filterSem.value = '';
+        filterStatus.value = '';
+        applyFilters();
+    });
+});
+</script>
 {% endblock %}

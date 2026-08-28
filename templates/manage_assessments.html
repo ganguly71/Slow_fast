@@ -62,14 +62,25 @@
                     <!-- Students Attended — Multi-Select -->
                     <div class="mb-3">
                         <label class="form-label">Students Attended</label>
-                        <div class="d-flex gap-2 mb-2">
+                        <div class="d-flex gap-2 mb-2 flex-wrap">
                             <input type="text" class="form-control" id="studentSearchInput"
-                                   placeholder="Search by roll no or name..." autocomplete="off">
-                            <select class="form-select" id="departmentFilter" style="max-width: 200px;">
+                                   placeholder="Search by roll no or name..." autocomplete="off" style="min-width: 160px; flex: 1;">
+                            <select class="form-select" id="departmentFilter" style="max-width: 140px;">
                                 <option value="">All Depts</option>
                                 {% for dept in departments %}
                                 <option value="{{ dept|lower }}">{{ dept }}</option>
                                 {% endfor %}
+                            </select>
+                            <select class="form-select" id="semesterFilter" style="max-width: 140px;">
+                                <option value="">All Semesters</option>
+                                <option value="1">Semester 1</option>
+                                <option value="2">Semester 2</option>
+                                <option value="3">Semester 3</option>
+                                <option value="4">Semester 4</option>
+                                <option value="5">Semester 5</option>
+                                <option value="6">Semester 6</option>
+                                <option value="7">Semester 7</option>
+                                <option value="8">Semester 8</option>
                             </select>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -86,12 +97,13 @@
                                    data-roll="{{ s.roll_no|lower }}"
                                    data-name="{{ s.name|lower }}"
                                    data-dept="{{ s.department|lower }}"
+                                   data-sem="{{ s.semester }}"
                                    data-id="{{ s.id }}">
                                 <input type="checkbox" class="form-check-input me-2 student-checkbox"
                                        value="{{ s.id }}" data-student-name="{{ s.name }}" data-student-roll="{{ s.roll_no }}">
                                 <span class="fw-semibold me-2">{{ s.roll_no }}</span>
                                 <span class="text-muted">{{ s.name }}</span>
-                                <span class="badge bg-light text-secondary ms-auto">{{ s.department }}</span>
+                                <span class="badge bg-light text-secondary ms-auto">Sem {{ s.semester }} &bull; {{ s.department }}</span>
                             </label>
                             {% endfor %}
                         </div>
@@ -381,6 +393,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('studentSearchInput');
     const deptFilter = document.getElementById('departmentFilter');
+    const semFilter = document.getElementById('semesterFilter');
     const selectAllBtn = document.getElementById('selectAllBtn');
     const checkboxes = document.querySelectorAll('.student-checkbox');
     const items = document.querySelectorAll('.student-pick-item');
@@ -393,20 +406,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return !item.classList.contains('d-none');
     }
 
-    // Combined filter: both search text AND department must match
+    // Combined filter: search text, department AND semester must match
     function applyFilters() {
         const q = searchInput.value.trim().toLowerCase();
         const dept = deptFilter.value;
+        const sem = semFilter ? semFilter.value.trim() : '';
 
         items.forEach(function(item) {
             const roll = item.getAttribute('data-roll');
             const name = item.getAttribute('data-name');
             const itemDept = item.getAttribute('data-dept');
+            const itemSem = item.getAttribute('data-sem');
 
             const matchesSearch = !q || roll.includes(q) || name.includes(q);
             const matchesDept = !dept || itemDept === dept;
+            const matchesSem = !sem || itemSem === sem;
 
-            if (matchesSearch && matchesDept) {
+            if (matchesSearch && matchesDept && matchesSem) {
                 item.classList.remove('d-none');
             } else {
                 item.classList.add('d-none');
@@ -418,6 +434,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     searchInput.addEventListener('input', applyFilters);
     deptFilter.addEventListener('change', applyFilters);
+    if (semFilter) {
+        semFilter.addEventListener('change', applyFilters);
+    }
 
     // Select All / Deselect All — only affects currently visible items
     selectAllBtn.addEventListener('click', function() {

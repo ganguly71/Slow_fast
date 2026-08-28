@@ -53,17 +53,30 @@
 
                 <!-- ─── Filter Bar ─────────────────────────────── -->
                 <div class="row g-2 mb-3" id="filterBar">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" class="form-control form-control-sm" id="filterRoll"
                                placeholder="Filter by Roll No...">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" class="form-control form-control-sm" id="filterName"
                                placeholder="Filter by Name...">
                     </div>
                     <div class="col-md-3">
                         <input type="text" class="form-control form-control-sm" id="filterDept"
                                placeholder="Filter by Department...">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" id="filterSem">
+                            <option value="">All Semesters</option>
+                            <option value="1">Semester 1</option>
+                            <option value="2">Semester 2</option>
+                            <option value="3">Semester 3</option>
+                            <option value="4">Semester 4</option>
+                            <option value="5">Semester 5</option>
+                            <option value="6">Semester 6</option>
+                            <option value="7">Semester 7</option>
+                            <option value="8">Semester 8</option>
+                        </select>
                     </div>
                     <div class="col-md-1 d-flex align-items-center">
                         <button class="btn btn-sm btn-outline-secondary w-100" id="clearFilters" title="Clear filters">
@@ -88,7 +101,8 @@
                             {% for student in students %}
                             <tr data-roll="{{ student.roll_no|lower }}"
                                 data-name="{{ student.name|lower }}"
-                                data-dept="{{ student.department|lower }}">
+                                data-dept="{{ student.department|lower }}"
+                                data-sem="{{ student.semester }}">
                                 <td>{{ student.id }}</td>
                                 <td>{{ student.roll_no }}</td>
                                 <td>{{ student.name }}</td>
@@ -199,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var filterRoll = document.getElementById('filterRoll');
     var filterName = document.getElementById('filterName');
     var filterDept = document.getElementById('filterDept');
+    var filterSem = document.getElementById('filterSem');
     var clearBtn = document.getElementById('clearFilters');
     var rows = document.querySelectorAll('#studentsTableBody tr[data-roll]');
     var statusEl = document.getElementById('filterStatus');
@@ -207,18 +222,21 @@ document.addEventListener('DOMContentLoaded', function() {
         var qRoll = filterRoll.value.trim().toLowerCase();
         var qName = filterName.value.trim().toLowerCase();
         var qDept = filterDept.value.trim().toLowerCase();
+        var qSem = filterSem.value.trim();
         var visibleCount = 0;
 
         rows.forEach(function(row) {
             var roll = row.getAttribute('data-roll');
             var name = row.getAttribute('data-name');
             var dept = row.getAttribute('data-dept');
+            var sem = row.getAttribute('data-sem');
 
             var matchRoll = !qRoll || roll.indexOf(qRoll) !== -1;
             var matchName = !qName || name.indexOf(qName) !== -1;
             var matchDept = !qDept || dept.indexOf(qDept) !== -1;
+            var matchSem = !qSem || sem === qSem;
 
-            if (matchRoll && matchName && matchDept) {
+            if (matchRoll && matchName && matchDept && matchSem) {
                 row.style.display = '';
                 visibleCount++;
             } else {
@@ -226,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        if (qRoll || qName || qDept) {
+        if (qRoll || qName || qDept || qSem) {
             statusEl.textContent = 'Showing ' + visibleCount + ' of ' + rows.length + ' student(s)';
         } else {
             statusEl.textContent = '';
@@ -236,11 +254,13 @@ document.addEventListener('DOMContentLoaded', function() {
     filterRoll.addEventListener('input', applyFilters);
     filterName.addEventListener('input', applyFilters);
     filterDept.addEventListener('input', applyFilters);
+    filterSem.addEventListener('change', applyFilters);
 
     clearBtn.addEventListener('click', function() {
         filterRoll.value = '';
         filterName.value = '';
         filterDept.value = '';
+        filterSem.value = '';
         applyFilters();
     });
 });
