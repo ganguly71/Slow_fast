@@ -84,7 +84,7 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <h6 class="card-title"><i class="bi bi-graph-up-arrow"></i> Average Score per Subject</h6>
+                <h6 class="card-title"><i class="bi bi-graph-up-arrow"></i> Average Score (%) per Subject</h6>
                 <canvas id="avgScoreChart" height="260"></canvas>
             </div>
         </div>
@@ -164,13 +164,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 4. Average Score per Subject — Horizontal Bar
+    // 4. Average Score (%) per Subject — Horizontal Bar
     new Chart(document.getElementById('avgScoreChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: {{ avg_score_labels | tojson }},
             datasets: [{
-                label: 'Avg Marks',
+                label: 'Avg Score (%)',
                 data: {{ avg_score_values | tojson }},
                 backgroundColor: 'rgba(102, 126, 234, 0.7)',
                 borderColor: '#667eea',
@@ -182,9 +182,22 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             indexAxis: 'y',
             responsive: true,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) { return 'Avg Score: ' + ctx.raw + '%'; }
+                    }
+                }
+            },
             scales: {
-                x: { beginAtZero: true }
+                x: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) { return value + '%'; }
+                    }
+                }
             }
         }
     });

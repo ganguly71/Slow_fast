@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS, Exam, ExamSubmission, Question, Option, ExamAllotment, StudentAnswer, Subject
+from models import db, User, Student, Assessment, Classification, RemedialSchedule, AssignmentGroup, SUBJECTS, Exam, ExamSubmission, Question, Option, ExamAllotment, StudentAnswer, Subject, get_ist_now, IST
 from mail_service import send_remedial_notification, send_remedial_batch_notification
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -148,6 +148,23 @@ def get_subject_threshold(subject_name):
         return jsonify({'threshold': subject_obj.threshold})
     return jsonify({'threshold': 50.0})
 
+@main.route('/api/exam_subject_threshold/<string:exam_id_code>')
+@login_required
+def exam_subject_threshold_api(exam_id_code):
+    exam = Exam.query.filter_by(assignment_code=exam_id_code).first()
+    if not exam:
+        return jsonify({'found': False, 'message': 'Exam not found', 'threshold': 50.0}), 404
+        
+    subject_obj = Subject.query.filter_by(name=exam.subject).first()
+    threshold = subject_obj.threshold if subject_obj else 50.0
+    
+    return jsonify({
+        'found': True,
+        'exam_title': exam.title,
+        'subject': exam.subject,
+        'threshold': threshold
+    })
+
 @main.route('/')
 def index():
     if current_user.is_authenticated:
@@ -186,7 +203,7 @@ def logout():
 def dashboard():
     total_students = Student.query.count()
     total_assignments = AssignmentGroup.query.count()
-    upcoming_remedials = RemedialSchedule.query.filter(RemedialSchedule.date >= datetime.utcnow()).count()
+    upcoming_remedials = RemedialSchedule.query.filter(RemedialSchedule.date >= get_ist_now()).count()
 
     # Avg attendance: for each assignment, how many students appeared (marks != -1) vs total selected
     all_groups = AssignmentGroup.query.all()
@@ -214,12 +231,12 @@ def dashboard():
     subj_labels = [r[0] for r in subj_rows]
     subj_counts = [r[1] for r in subj_rows]
 
-    # Average score per subject (excluding absent marks = -1)
+    # Average score percentage per subject (excluding absent marks = -1)
     avg_score_rows = db.session.query(
         AssignmentGroup.subject,
-        func.avg(Assessment.marks)
+        func.avg((Assessment.marks / AssignmentGroup.total_marks) * 100.0)
     ).join(Assessment, Assessment.assignment_group_id == AssignmentGroup.id
-    ).filter(Assessment.marks != -1
+    ).filter(Assessment.marks != -1, AssignmentGroup.total_marks > 0
     ).group_by(AssignmentGroup.subject).all()
     avg_score_labels = [r[0] for r in avg_score_rows]
     avg_score_values = [round(r[1], 1) if r[1] else 0 for r in avg_score_rows]
@@ -765,8 +782,8 @@ def delete_faculty(user_id):
     return redirect(url_for('main.manage_faculty'))
 
 def get_next_available_slot():
-    # Schedule remedial 3 days from now for simplicity
-    return datetime.utcnow() + timedelta(days=3)
+    # Schedule remedial 3 days from now in IST
+    return get_ist_now() + timedelta(days=3)
 
 def find_faculty_for_subject(subject):
     """Find a faculty member assigned to the given subject."""

@@ -524,8 +524,8 @@ function showAssignmentStats(groupId) {
             html += '</div></div></div>';
             html += '<div class="col-md-6"><div class="card"><div class="card-body text-center">';
             html += '<h6 class="text-muted">Average Score</h6>';
-            html += '<h2 class="display-6 fw-bold" style="color:#667eea">' + data.avg_score + ' / ' + data.total_marks + '</h2>';
-            html += '<p class="text-muted mb-0">(' + data.avg_percentage + '%)</p>';
+            html += '<h2 class="display-6 fw-bold" style="color:#667eea">' + data.avg_percentage + '%</h2>';
+            html += '<p class="text-muted mb-0">(' + data.avg_score + ' / ' + data.total_marks + ' marks)</p>';
             html += '</div></div></div>';
             html += '</div>';
 
@@ -623,7 +623,7 @@ function openEditThresholdModal(groupId, assignmentName, currentThreshold) {
     modal.show();
 }
 
-// Dynamic threshold update based on selected subject
+// Dynamic threshold update based on selected subject or fetched exam ID
 document.addEventListener('DOMContentLoaded', function() {
     const subjectSelect = document.getElementById('subject');
     const thresholdInput = document.getElementById('threshold_percent');
@@ -644,6 +644,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 thresholdInput.value = '50';
             }
         });
+    }
+
+    const examIdInput = document.getElementById('exam_id_code');
+    const fetchThresholdInput = document.getElementById('fetch_threshold_percent');
+    
+    if (examIdInput && fetchThresholdInput) {
+        let debounceTimer;
+        function updateExamThreshold() {
+            const code = examIdInput.value.trim();
+            if (code.length >= 3) {
+                fetch('/api/exam_subject_threshold/' + encodeURIComponent(code))
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.found && data.threshold !== undefined) {
+                            fetchThresholdInput.value = data.threshold;
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('Error fetching exam threshold:', err);
+                    });
+            }
+        }
+
+        examIdInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(updateExamThreshold, 300);
+        });
+
+        examIdInput.addEventListener('blur', updateExamThreshold);
     }
 });
 </script>

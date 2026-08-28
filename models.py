@@ -1,7 +1,13 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_now():
+    """Return current timestamp in Indian Standard Time (IST)."""
+    return datetime.now(timezone.utc).astimezone(IST).replace(tzinfo=None)
 
 db = SQLAlchemy()
 
@@ -59,7 +65,7 @@ class AssignmentGroup(db.Model):
     subject = db.Column(db.String(100), nullable=False)
     total_marks = db.Column(db.Float, nullable=False)          # maximum marks for this assignment
     threshold_percent = db.Column(db.Float, nullable=False, default=50.0)  # slow learner threshold %
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=get_ist_now)
     remedial_booked = db.Column(db.Boolean, default=False)     # True once "Book Remedial" has been clicked
 
     assessments = db.relationship('Assessment', backref='assignment_group', lazy=True, cascade="all, delete-orphan")
@@ -70,7 +76,7 @@ class Assessment(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     subject = db.Column(db.String(100), nullable=False)
     marks = db.Column(db.Float, nullable=False)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=get_ist_now)
     assignment_group_id = db.Column(db.Integer, db.ForeignKey('assignment_groups.id'), nullable=True)
 
 class Classification(db.Model):
@@ -102,7 +108,7 @@ class Exam(db.Model):
     time_limit_mins = db.Column(db.Integer, nullable=False, default=30)
     is_active = db.Column(db.Boolean, default=True)
     allow_start = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_ist_now)
 
     questions = db.relationship('Question', backref='exam', lazy=True, cascade="all, delete-orphan")
     allotments = db.relationship('ExamAllotment', backref='exam', lazy=True, cascade="all, delete-orphan")

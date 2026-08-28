@@ -43,7 +43,7 @@ def send_remedial_notification(faculty_email, student_name, subject, marks, reme
         <p>Hello,</p>
         <p>A remedial class has been scheduled for <strong>{student_name}</strong> in <strong>{subject}</strong>.</p>
         <p>The student scored <strong>{marks}</strong> marks, which is below the threshold.</p>
-        <p><strong>Remedial Date:</strong> {remedial_date.strftime('%Y-%m-%d %H:%M')}</p>
+        <p><strong>Remedial Date:</strong> {remedial_date.strftime('%d %b %Y, %I:%M %p')} IST</p>
         <p>Please prepare accordingly.</p>
         <p>Regards,<br>Automated System</p>
         """
@@ -150,7 +150,7 @@ def send_remedial_batch_notification(faculty_email, assignment_name, subject, st
         <p>Hello,</p>
         <p>A remedial class has been booked for the assignment <strong>{assignment_name}</strong>
            in <strong>{subject}</strong>.</p>
-        <p><strong>Remedial Date:</strong> {remedial_date.strftime('%Y-%m-%d %H:%M')}</p>
+        <p><strong>Remedial Date:</strong> {remedial_date.strftime('%d %b %Y, %I:%M %p')} IST</p>
 
         {slow_section}
         {absent_section}

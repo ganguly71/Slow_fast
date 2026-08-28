@@ -25,7 +25,7 @@
                             <tr class="{{ 'table-success' if group.all_done else '' }}">
                                 <td><strong>{{ group.assignment_name }}</strong></td>
                                 <td><span class="badge bg-primary">{{ group.subject }}</span></td>
-                                <td><strong>{{ group.date.strftime('%Y-%m-%d %H:%M') }}</strong></td>
+                                <td><strong>{{ group.date.strftime('%Y-%m-%d %H:%M') }} <span class="badge bg-light text-secondary border">IST</span></strong></td>
                                 <td>
                                     <i class="bi bi-person-fill text-primary"></i> {{ group.faculty_name }}
                                 </td>
