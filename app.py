@@ -98,6 +98,14 @@ def create_app():
             db.session.add(admin)
             db.session.commit()
 
+        # Recalculate Kalman thresholds and classify students dynamically on startup
+        from routes import update_subject_threshold
+        for s in Subject.query.all():
+            try:
+                update_subject_threshold(s.name)
+            except Exception:
+                db.session.rollback()
+
     return app
 
 if __name__ == '__main__':

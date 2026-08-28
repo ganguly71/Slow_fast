@@ -23,7 +23,7 @@ def update_subject_threshold(subject_name):
     Q = 1.0
     R = 4.0
     
-    # Query all assignment groups of this subject, sorted by date ascending
+    # Query all assignment groups/exams of this subject, sorted by date ascending
     groups = AssignmentGroup.query.filter_by(subject=subject_name).order_by(AssignmentGroup.date.asc()).all()
     
     for group in groups:
@@ -52,6 +52,44 @@ def update_subject_threshold(subject_name):
         
     subject_obj.threshold = round(x, 2)
     subject_obj.uncertainty = round(P, 4)
+    db.session.flush()
+
+    # Segregate and classify all students who took exams in this subject
+    assessments = Assessment.query.filter_by(subject=subject_name).all()
+    student_assessments_map = {}
+    for a in assessments:
+        if a.student_id not in student_assessments_map:
+            student_assessments_map[a.student_id] = []
+        student_assessments_map[a.student_id].append(a)
+        
+    for student_id, stu_assessments in student_assessments_map.items():
+        valid_percentages = []
+        for a in stu_assessments:
+            if a.marks != -1 and a.assignment_group and a.assignment_group.total_marks > 0:
+                pct = (a.marks / a.assignment_group.total_marks) * 100.0
+                valid_percentages.append(pct)
+                
+        if not valid_percentages:
+            continue
+            
+        avg_student_pct = sum(valid_percentages) / len(valid_percentages)
+        
+        if avg_student_pct < subject_obj.threshold:
+            learner_type = "Slow Learner"
+        else:
+            learner_type = "Fast Learner"
+            
+        classification = Classification.query.filter_by(student_id=student_id, subject=subject_name).first()
+        if classification:
+            classification.learner_type = learner_type
+        else:
+            classification = Classification(
+                student_id=student_id,
+                subject=subject_name,
+                learner_type=learner_type
+            )
+            db.session.add(classification)
+            
     db.session.commit()
 
 def get_subject_statistics():
