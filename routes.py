@@ -7,6 +7,11 @@ from sqlalchemy import func
 
 main = Blueprint('main', __name__)
 
+@main.route('/ping')
+@main.route('/health')
+def health_check():
+    return jsonify({'status': 'ok', 'service': 'UNNATI System'}), 200
+
 THRESHOLD_PERCENT = 50.0  # percentage threshold for slow/fast learner
 
 def get_all_subject_names():
