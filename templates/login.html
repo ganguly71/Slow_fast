@@ -1,492 +1,775 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Google Fonts for Formal Academic Typography -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
 <style>
     /* =========================================================
-       LIGHT THEME AMBIENT BACKDROP & PASTEL MESH ANIMATIONS
+       FORMAL LIGHT THEME DESIGN SYSTEM
        ========================================================= */
     :root {
-        --primary-glow: #4f46e5;
-        --secondary-glow: #7c3aed;
-        --accent-glow: #0284c7;
-        --glass-bg: rgba(255, 255, 255, 0.78);
-        --glass-border: rgba(255, 255, 255, 0.9);
+        --formal-bg: #f8fafc;
+        --formal-card-bg: #ffffff;
+        --formal-border: #e2e8f0;
+        --formal-border-strong: #cbd5e1;
+        
+        --color-navy-dark: #0f172a;
+        --color-navy: #1e3a8a;
+        --color-blue: #2563eb;
+        --color-indigo: #4338ca;
+        --color-emerald: #059669;
+        --color-amber: #d97706;
+        --color-slate-subtle: #64748b;
+        
+        --font-main: 'Plus Jakarta Sans', sans-serif;
+        --font-heading: 'Space Grotesk', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+        --font-sans: 'Outfit', sans-serif;
     }
 
     body {
-        background-color: #f1f5f9 !important;
-        color: #0f172a;
+        background-color: var(--formal-bg) !important;
+        color: var(--color-navy-dark);
+        font-family: var(--font-main);
         overflow-x: hidden;
     }
 
-    /* Ambient animated mesh backdrop */
-    .login-universe-wrapper {
+    .main-content {
+        padding-top: 0.5rem !important;
+        padding-bottom: 2.5rem !important;
+        max-width: 1440px !important;
+    }
+
+    /* Ambient Soft Pastel Backdrop Orbs */
+    .formal-universe {
         position: relative;
-        min-height: calc(100vh - 140px);
-        display: flex;
-        align-items: center;
-        padding: 1.5rem 0 3rem;
+        min-height: 86vh;
         z-index: 1;
     }
 
-    .ambient-mesh {
-        position: absolute;
+    .ambient-pastel-backdrop {
+        position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
         pointer-events: none;
-        z-index: -1;
+        z-index: -2;
         overflow: hidden;
     }
 
-    .mesh-orb {
+    .pastel-orb {
         position: absolute;
         border-radius: 50%;
-        filter: blur(90px);
+        filter: blur(100px);
         opacity: 0.55;
-        animation: floatOrb 14s ease-in-out infinite alternate;
+        animation: pastelFloat 18s ease-in-out infinite alternate;
     }
 
-    .orb-1 {
-        width: 520px;
-        height: 520px;
+    .orb-soft-indigo {
+        width: 580px;
+        height: 580px;
         background: radial-gradient(circle, #c7d2fe 0%, #e0e7ff 70%);
         top: -120px;
         left: -100px;
-        animation-duration: 16s;
+        animation-duration: 20s;
     }
 
-    .orb-2 {
-        width: 480px;
-        height: 480px;
-        background: radial-gradient(circle, #ddd6fe 0%, #ede9fe 70%);
+    .orb-soft-cyan {
+        width: 520px;
+        height: 520px;
+        background: radial-gradient(circle, #bae6fd 0%, #e0f2fe 70%);
         bottom: -100px;
         right: -80px;
-        animation-duration: 18s;
-        animation-delay: -5s;
+        animation-duration: 22s;
+        animation-delay: -6s;
     }
 
-    .orb-3 {
-        width: 380px;
-        height: 380px;
-        background: radial-gradient(circle, #bae6fd 0%, #e0f2fe 70%);
+    .orb-soft-violet {
+        width: 420px;
+        height: 420px;
+        background: radial-gradient(circle, #ddd6fe 0%, #ede9fe 70%);
         top: 35%;
         left: 40%;
-        animation-duration: 12s;
-        animation-delay: -8s;
-        opacity: 0.45;
-    }
-
-    @keyframes floatOrb {
-        0% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(45px, 35px) scale(1.06); }
-        100% { transform: translate(-35px, -45px) scale(0.96); }
-    }
-
-    /* Floating geometric SVG animations */
-    .floating-svg {
-        position: absolute;
-        pointer-events: none;
+        animation-duration: 16s;
+        animation-delay: -9s;
         opacity: 0.4;
+    }
+
+    @keyframes pastelFloat {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(45px, 35px) scale(1.08); }
+        100% { transform: translate(-35px, -45px) scale(0.95); }
+    }
+
+    /* Light Architectural Grid Lines */
+    .architectural-grid-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: 
+            linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
         z-index: -1;
-    }
-
-    .svg-node-1 {
-        top: 6%;
-        right: 10%;
-        width: 150px;
-        animation: floatSvg 10s ease-in-out infinite alternate;
-    }
-
-    .svg-node-2 {
-        bottom: 10%;
-        left: 6%;
-        width: 180px;
-        animation: floatSvg 14s ease-in-out infinite alternate-reverse;
-    }
-
-    .svg-node-3 {
-        top: 48%;
-        left: 2%;
-        width: 95px;
-        animation: floatSvg 9s ease-in-out infinite alternate;
-    }
-
-    @keyframes floatSvg {
-        0% { transform: translateY(0) rotate(0deg); }
-        100% { transform: translateY(-20px) rotate(12deg); }
+        pointer-events: none;
     }
 
     /* =========================================================
-       LIGHT GLASSMORPHISM CARDS & CONTAINERS
+       FORMAL TICKER RIBBON
        ========================================================= */
-    .glass-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(25px) saturate(190%);
-        -webkit-backdrop-filter: blur(25px) saturate(190%);
-        border: 1.5px solid var(--glass-border);
-        border-radius: 1.5rem;
-        box-shadow: 0 20px 45px -10px rgba(99, 102, 241, 0.15), 
-                    0 0 25px rgba(224, 231, 255, 0.8),
-                    inset 0 1px 0 rgba(255, 255, 255, 1);
-        transition: all 0.3s ease;
+    .formal-ticker-wrapper {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+        overflow: hidden;
+        margin-bottom: 2rem;
+        z-index: 2;
     }
 
-    .glass-card:hover {
-        box-shadow: 0 25px 55px -10px rgba(99, 102, 241, 0.22), 
-                    0 0 35px rgba(199, 210, 254, 0.9),
-                    inset 0 1px 0 rgba(255, 255, 255, 1);
-    }
-
-    /* Brand Hero Section */
-    .brand-glow-title {
-        font-size: 3.2rem;
-        font-weight: 900;
-        letter-spacing: -1.5px;
-        background: linear-gradient(135deg, #1e3a8a 0%, #4338ca 50%, #6d28d9 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.25rem;
-    }
-
-    .brand-full-name {
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: #334155;
-        letter-spacing: 0.2px;
-        line-height: 1.4;
-    }
-
-    .brand-acronym-badge {
-        display: inline-block;
-        padding: 0.35rem 0.85rem;
-        background: rgba(79, 70, 229, 0.08);
-        border: 1px solid rgba(79, 70, 229, 0.2);
-        border-radius: 2rem;
-        color: #4338ca;
-        font-size: 0.82rem;
+    .formal-ticker {
+        display: flex;
+        user-select: none;
+        gap: 2rem;
+        padding: 0.55rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-bottom: 1rem;
+        letter-spacing: 1.2px;
+        white-space: nowrap;
+        background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 50%, #1d4ed8 100%);
+        color: #ffffff;
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.15);
     }
 
-    /* Feature Highlights */
-    .feature-item {
+    .ticker-track {
         display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-        padding: 0.85rem 1rem;
-        background: rgba(255, 255, 255, 0.65);
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        align-items: center;
+        gap: 2rem;
+        animation: tickerScroll 32s linear infinite;
+    }
+
+    .ticker-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .ticker-bullet {
+        width: 6px;
+        height: 6px;
+        background: #93c5fd;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    @keyframes tickerScroll {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+    }
+
+    /* =========================================================
+       LEFT COLUMN: FORMAL INSTITUTIONAL SHOWCASE
+       ========================================================= */
+    .official-badge-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.4rem 1.1rem;
+        background: #ffffff;
+        border: 1px solid var(--formal-border-strong);
+        border-radius: 9999px;
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--color-navy);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 1.35rem;
+    }
+
+    .institutional-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--color-emerald);
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    }
+
+    /* Formal Main Title */
+    .formal-brand-title {
+        font-family: var(--font-heading);
+        font-size: clamp(3rem, 5.5vw, 4.5rem);
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -2px;
+        color: var(--color-navy-dark);
+        margin-bottom: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+    .formal-brand-title span.title-gradient {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .formal-version-pill {
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--color-navy);
+        background: #dbeafe;
+        border: 1px solid #bfdbfe;
+        padding: 0.25rem 0.65rem;
+        border-radius: 0.5rem;
+        letter-spacing: 0.5px;
+        vertical-align: middle;
+    }
+
+    .formal-acronym-subtitle {
+        font-size: 1.12rem;
+        font-weight: 600;
+        color: #334155;
+        line-height: 1.5;
+        margin-bottom: 1.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .letter-highlight {
+        color: var(--color-navy);
+        font-weight: 800;
+        background: rgba(30, 58, 138, 0.08);
+        padding: 0 0.3rem;
+        border-radius: 0.25rem;
+        border: 1px solid rgba(30, 58, 138, 0.15);
+    }
+
+    /* Formal Badges Row */
+    .formal-badges-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-bottom: 2rem;
+    }
+
+    .formal-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-family: var(--font-main);
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.4rem 0.85rem;
+        background: #ffffff;
+        border: 1px solid var(--formal-border-strong);
+        border-radius: 0.6rem;
+        color: #1e293b;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Formal Bento Grid */
+    .formal-bento-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.15rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .formal-bento-card {
+        background: var(--formal-card-bg);
+        border: 1px solid var(--formal-border);
         border-radius: 1rem;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        padding: 1.25rem;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
         transition: all 0.25s ease;
     }
 
-    .feature-item:hover {
-        background: #ffffff;
-        border-color: rgba(99, 102, 241, 0.4);
-        transform: translateX(6px);
-        box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.12);
+    .formal-bento-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 25px rgba(30, 58, 138, 0.08);
+        border-color: #cbd5e1;
     }
 
-    .feature-icon-wrapper {
-        width: 42px;
-        height: 42px;
+    .bento-icon-wrapper {
+        width: 40px;
+        height: 40px;
         border-radius: 0.75rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        flex-shrink: 0;
+        font-size: 1.2rem;
+        margin-bottom: 0.85rem;
     }
 
-    .fi-blue { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
-    .fi-purple { background: #f3e8ff; color: #9333ea; border: 1px solid #e9d5ff; }
-    .fi-emerald { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
-    .fi-amber { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+    .biw-blue { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
+    .biw-indigo { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+    .biw-emerald { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+    .biw-amber { background: #fffbebf; color: #d97706; border: 1px solid #fde68a; }
 
-    .feature-title {
+    .formal-bento-title {
         font-weight: 700;
-        font-size: 0.95rem;
-        color: #0f172a;
-        margin-bottom: 0.15rem;
+        font-size: 0.98rem;
+        color: var(--color-navy-dark);
+        margin-bottom: 0.3rem;
     }
 
-    .feature-desc {
+    .formal-bento-desc {
         font-size: 0.82rem;
-        color: #64748b;
-        line-height: 1.35;
-        margin-bottom: 0;
+        color: var(--color-slate-subtle);
+        line-height: 1.45;
+        margin: 0;
     }
 
-    /* Quality Tags */
-    .quality-tag {
+    .formal-bento-code {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.2rem 0.5rem;
+        background: #f1f5f9;
+        color: #334155;
+        border-radius: 0.35rem;
+        margin-top: 0.6rem;
+    }
+
+    /* Telemetry Footer Strip */
+    .formal-telemetry-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.25rem;
+        background: #ffffff;
+        border: 1px solid var(--formal-border-strong);
+        border-radius: 0.85rem;
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--color-slate-subtle);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    /* =========================================================
+       RIGHT COLUMN: FORMAL LIGHT LOGIN CONSOLE
+       ========================================================= */
+    .formal-login-card {
+        background: #ffffff;
+        border: 1.5px solid var(--formal-border-strong);
+        border-radius: 1.5rem;
+        padding: 2.5rem 2.25rem;
+        box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.08),
+                    0 0 20px rgba(30, 58, 138, 0.03);
+        position: relative;
+    }
+
+    .formal-card-header {
+        text-align: center;
+        margin-bottom: 1.75rem;
+    }
+
+    .formal-crest-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1.5px solid #bfdbfe;
+        border-radius: 50%;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        padding: 0.35rem 0.75rem;
-        background: rgba(255, 255, 255, 0.75);
-        border: 1px solid #e2e8f0;
-        border-radius: 0.5rem;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: #475569;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        justify-content: center;
+        font-size: 1.75rem;
+        color: var(--color-navy);
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.1);
+        margin-bottom: 1rem;
     }
 
-    /* Form Elements */
-    .custom-form-control {
+    .formal-card-title {
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 1.75rem;
+        color: var(--color-navy-dark);
+        margin-bottom: 0.25rem;
+    }
+
+    .formal-card-sub {
+        font-size: 0.88rem;
+        color: var(--color-slate-subtle);
+        margin: 0;
+    }
+
+    /* Form Fields */
+    .formal-form-group {
+        margin-bottom: 1.35rem;
+    }
+
+    .formal-input-label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.45rem;
+    }
+
+    .formal-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .formal-input-icon {
+        position: absolute;
+        left: 1rem;
+        font-size: 1.1rem;
+        color: #64748b;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .formal-control {
+        width: 100%;
         background: #ffffff !important;
         border: 1.5px solid #cbd5e1 !important;
-        color: #0f172a !important;
         border-radius: 0.85rem;
-        padding: 0.75rem 1rem;
+        padding: 0.8rem 1rem 0.8rem 2.75rem;
         font-size: 0.95rem;
-        transition: all 0.25s ease;
-    }
-
-    .custom-form-control:focus {
-        background: #ffffff !important;
-        border-color: #4f46e5 !important;
-        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15) !important;
         color: #0f172a !important;
+        transition: all 0.2s ease;
     }
 
-    .custom-form-control::placeholder {
+    .formal-control:focus {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12) !important;
+        outline: none;
+    }
+
+    .formal-control::placeholder {
         color: #94a3b8;
     }
 
-    .input-group-text-glass {
-        background: #f8fafc !important;
-        border: 1.5px solid #cbd5e1 !important;
-        border-right: none !important;
-        color: #64748b;
-        border-radius: 0.85rem 0 0 0.85rem !important;
-        padding-left: 1rem;
-        padding-right: 0.75rem;
-    }
-
-    .input-group .custom-form-control {
-        border-left: none !important;
-        border-radius: 0 0.85rem 0.85rem 0 !important;
-    }
-
-    /* Glowing Submit Button */
-    .btn-glow-submit {
-        position: relative;
-        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
-        border: none;
-        color: #ffffff;
-        font-weight: 700;
-        font-size: 1.05rem;
-        padding: 0.85rem 1.5rem;
-        border-radius: 0.85rem;
-        box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
-        z-index: 1;
-    }
-
-    .btn-glow-submit::before {
-        content: '';
+    .formal-pwd-toggle {
         position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: left 0.6s ease;
-        z-index: -1;
+        right: 0.85rem;
+        background: none;
+        border: none;
+        color: #64748b;
+        font-size: 1.1rem;
+        padding: 0.35rem;
+        cursor: pointer;
+        z-index: 2;
+        transition: color 0.2s ease;
     }
 
-    .btn-glow-submit:hover {
+    .formal-pwd-toggle:hover {
+        color: var(--color-navy);
+    }
+
+    /* Demo Quick Fill Box */
+    .formal-quick-fill-box {
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 0.85rem;
+        padding: 0.75rem 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .quick-fill-title {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--color-slate-subtle);
+        margin-bottom: 0.45rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .quick-pill-btn {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #1e293b;
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+        font-weight: 700;
+        padding: 0.3rem 0.7rem;
+        border-radius: 0.4rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .quick-pill-btn:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
+        color: var(--color-navy);
+        transform: translateY(-1px);
+    }
+
+    /* Formal Primary Submit Button */
+    .btn-formal-submit {
+        width: 100%;
+        padding: 0.95rem 1.5rem;
+        font-family: var(--font-main);
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #ffffff;
+        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #1d4ed8 100%);
+        border: none;
+        border-radius: 0.85rem;
+        box-shadow: 0 8px 20px -4px rgba(30, 58, 138, 0.35);
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+
+    .btn-formal-submit:hover {
         transform: translateY(-2px);
-        box-shadow: 0 15px 25px -5px rgba(79, 70, 229, 0.55);
+        box-shadow: 0 12px 25px -4px rgba(30, 58, 138, 0.45);
         color: #ffffff;
     }
 
-    .btn-glow-submit:hover::before {
-        left: 100%;
-    }
-
-    .btn-glow-submit:active {
+    .btn-formal-submit:active {
         transform: translateY(1px);
     }
 
-    .status-pulse {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background-color: #10b981;
-        border-radius: 50%;
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-        animation: pulseStatus 2s infinite;
+    .formal-footer-text {
+        text-align: center;
+        margin-top: 1.35rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--formal-border);
+        font-size: 0.78rem;
+        color: var(--color-slate-subtle);
     }
 
-    @keyframes pulseStatus {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    @media (max-width: 991px) {
+        .formal-bento-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
-<div class="login-universe-wrapper">
-    <!-- Animated Ambient Mesh Background Orbs -->
-    <div class="ambient-mesh">
-        <div class="mesh-orb orb-1"></div>
-        <div class="mesh-orb orb-2"></div>
-        <div class="mesh-orb orb-3"></div>
+<!-- Ambient Soft Backdrop -->
+<div class="ambient-pastel-backdrop">
+    <div class="pastel-orb orb-soft-indigo"></div>
+    <div class="pastel-orb orb-soft-cyan"></div>
+    <div class="pastel-orb orb-soft-violet"></div>
+</div>
 
-        <!-- Floating Abstract SVGs -->
-        <svg class="floating-svg svg-node-1" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="100" cy="100" r="80" stroke="url(#paint0_linear)" stroke-width="2.5" stroke-dasharray="6 6"/>
-            <circle cx="100" cy="100" r="40" stroke="#6366f1" stroke-width="1.5"/>
-            <circle cx="60" cy="70" r="9" fill="#0284c7"/>
-            <circle cx="140" cy="130" r="7" fill="#8b5cf6"/>
-            <defs>
-                <linearGradient id="paint0_linear" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
-                    <stop stop-color="#4f46e5"/>
-                    <stop offset="1" stop-color="#0284c7"/>
-                </linearGradient>
-            </defs>
-        </svg>
+<!-- Architectural Grid Overlay -->
+<div class="architectural-grid-overlay"></div>
 
-        <svg class="floating-svg svg-node-2" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polygon points="100,20 180,160 20,160" stroke="#7c3aed" stroke-width="2" fill="rgba(124, 58, 237, 0.03)"/>
-            <circle cx="100" cy="90" r="14" fill="#0284c7"/>
-            <circle cx="180" cy="160" r="9" fill="#4f46e5"/>
-            <circle cx="20" cy="160" r="9" fill="#10b981"/>
-        </svg>
-
-        <svg class="floating-svg svg-node-3" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="20" y="20" width="60" height="60" rx="14" stroke="#0284c7" stroke-width="2" transform="rotate(45 50 50)"/>
-        </svg>
+<!-- =========================================================
+     TOP TICKER ANNOUNCEMENT RIBBON
+     ========================================================= -->
+<div class="formal-ticker-wrapper">
+    <div class="formal-ticker">
+        <div class="ticker-track">
+            <span class="ticker-item"><i class="bi bi-shield-check"></i> UNNATI OFFICIAL PORTAL</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-cpu"></i> KALMAN FILTER ADAPTIVE BENCHMARKING</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-bar-chart-line"></i> AUTOMATED LEARNER SEGREGATION</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-envelope-check"></i> BREVO SMTP REMEDIAL DISPATCH</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-building"></i> COOCH BEHAR GOVT. ENGINEERING COLLEGE</span>
+            <span class="ticker-bullet"></span>
+            <!-- Duplicate for continuous scroll -->
+            <span class="ticker-item"><i class="bi bi-shield-check"></i> UNNATI OFFICIAL PORTAL</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-cpu"></i> KALMAN FILTER ADAPTIVE BENCHMARKING</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-bar-chart-line"></i> AUTOMATED LEARNER SEGREGATION</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-envelope-check"></i> BREVO SMTP REMEDIAL DISPATCH</span>
+            <span class="ticker-bullet"></span>
+            <span class="ticker-item"><i class="bi bi-building"></i> COOCH BEHAR GOVT. ENGINEERING COLLEGE</span>
+            <span class="ticker-bullet"></span>
+        </div>
     </div>
+</div>
 
-    <div class="container position-relative">
+<div class="formal-universe">
+    <div class="container-fluid px-lg-5">
         <div class="row align-items-center g-5">
-            <!-- ==============================================
-                 LEFT COLUMN: BRAND SHOWCASE & SYSTEM PILLARS
-                 ============================================== -->
-            <div class="col-lg-7 d-none d-lg-block pe-lg-4">
-                <div class="brand-acronym-badge">
-                    <span class="status-pulse me-2"></span> Adaptive Academic Platform of <strong>Cooch Behar Government Engineering College</strong>
-                </div>
-                
-                <h1 class="brand-glow-title">UNNATI</h1>
-                <p class="brand-full-name mb-4">
-                    <strong>U</strong>nified <strong>N</strong>etwork for <strong>N</strong>urturing <strong>A</strong>cademic <strong>T</strong>alent & <strong>I</strong>mprovement
-                </p>
 
-                <!-- Core Pillars / Features -->
-                <div class="mb-4">
-                    <div class="feature-item">
-                        <div class="feature-icon-wrapper fi-blue">
+            <!-- ==============================================
+                 LEFT COLUMN: FORMAL ACADEMIC SHOWCASE
+                 ============================================== -->
+            <div class="col-lg-7 d-none d-lg-block pe-xl-5">
+                <!-- Institutional Header Badge -->
+                <div class="official-badge-header">
+                    <span class="institutional-dot"></span>
+                    <span>Cooch Behar Government Engineering College • CSE Dept.</span>
+                </div>
+
+                <!-- Main Brand Title -->
+                <div>
+                    <h1 class="formal-brand-title">
+                        <span class="title-gradient">UNNATI</span>
+                    </h1>
+                </div>
+
+                <!-- Acronym Breakdown -->
+                <div class="formal-acronym-subtitle">
+                    <span><span class="letter-highlight">U</span>nified</span>
+                    <span><span class="letter-highlight">N</span>etwork</span>
+                    <span>for</span>
+                    <span><span class="letter-highlight">N</span>urturing</span>
+                    <span><span class="letter-highlight">A</span>cademic</span>
+                    <span><span class="letter-highlight">T</span>alent</span>
+                    <span>&</span>
+                    <span><span class="letter-highlight">I</span>mprovement</span>
+                </div>
+
+                <!-- Formal Badges Row -->
+                <div class="formal-badges-row">
+                    <div class="formal-tag">
+                        <i class="bi bi-shield-lock text-primary"></i> RBAC Security
+                    </div>
+                    <div class="formal-tag">
+                        <i class="bi bi-cpu text-info"></i> Kalman Gaussian Engine
+                    </div>
+                    <div class="formal-tag">
+                        <i class="bi bi-send-check text-success"></i> Brevo Transactional Mail
+                    </div>
+                    <div class="formal-tag">
+                        <i class="bi bi-graph-up-arrow text-warning"></i> Real-Time Analytics
+                    </div>
+                    <div class="formal-tag">
+                        <i class="bi-file-earmark-check-fill text-success"></i> Secure Exam System
+                    </div>
+                    <div class="formal-tag">
+                        <i class="bi-easel2-fill text-success"></i> Remedial Classes
+                    </div>
+                </div>
+
+                <!-- Formal Bento Features Grid -->
+                <div class="formal-bento-grid">
+                    <!-- Bento 1: Kalman Filter -->
+                    <div class="formal-bento-card">
+                        <div class="bento-icon-wrapper biw-indigo">
                             <i class="bi bi-cpu-fill"></i>
                         </div>
-                        <div>
-                            <h5 class="feature-title">Kalman Filter Dynamic Thresholding</h5>
-                            <p class="feature-desc">Continuous statistical state-space learning that calculates precision passing benchmarks across exam cohorts in real-time.</p>
-                        </div>
+                        <h4 class="formal-bento-title">Kalman State-Space Engine</h4>
+                        <p class="formal-bento-desc">Recursive statistical threshold calculation across student cohorts to maintain precise academic passing benchmarks.</p>
+                        <span class="formal-bento-code">K_k = P_k / (P_k + R)</span>
                     </div>
 
-                    <div class="feature-item">
-                        <div class="feature-icon-wrapper fi-purple">
-                            <i class="bi bi-speedometer2"></i>
+                    <!-- Bento 2: Precision Learner Segregation -->
+                    <div class="formal-bento-card">
+                        <div class="bento-icon-wrapper biw-blue">
+                            <i class="bi bi-bar-chart-steps"></i>
                         </div>
-                        <div>
-                            <h5 class="feature-title">Precision Learner Classification</h5>
-                            <p class="feature-desc">Automated differentiation between fast and slow learners per subject to eliminate learning gaps early.</p>
-                        </div>
+                        <h4 class="formal-bento-title">Learner Intelligence</h4>
+                        <p class="formal-bento-desc">Automated differentiation between fast and slow learners per subject to address learning gaps early.</p>
+                        <span class="formal-bento-code">Dynamic Cutoff Segregation</span>
                     </div>
 
-                    <div class="feature-item">
-                        <div class="feature-icon-wrapper fi-emerald">
+                    <!-- Bento 3: Automated Remedial Dispatch -->
+                    <div class="formal-bento-card">
+                        <div class="bento-icon-wrapper biw-emerald">
                             <i class="bi bi-envelope-paper-heart-fill"></i>
                         </div>
-                        <div>
-                            <h5 class="feature-title">Automated Remedial Intelligence</h5>
-                            <p class="feature-desc">Instant booking of intervention sessions with automated email batch dispatch to subject faculties.</p>
-                        </div>
+                        <h4 class="formal-bento-title">Autonomous Remedial Dispatch</h4>
+                        <p class="formal-bento-desc">One-click scheduling with automated email batch notifications sent directly to assigned faculty members.</p>
+                        <span class="formal-bento-code">Brevo SMTP Synchronized</span>
                     </div>
 
-                    <div class="feature-item">
-                        <div class="feature-icon-wrapper fi-amber">
-                            <i class="bi bi-pie-chart-fill"></i>
+                    <!-- Bento 4: Multi-Faculty Governance -->
+                    <div class="formal-bento-card">
+                        <div class="bento-icon-wrapper biw-amber">
+                            <i class="bi bi-person-badge-fill"></i>
                         </div>
-                        <div>
-                            <h5 class="feature-title">Subject Hub & Multi-Faculty Governance</h5>
-                            <p class="feature-desc">Interactive performance comparisons, student participation analytics, and centralized faculty assignment.</p>
-                        </div>
+                        <h4 class="formal-bento-title">Faculty Governance</h4>
+                        <p class="formal-bento-desc">Centralized subject allocation, role-based authorization, and comprehensive departmental oversight.</p>
+                        <span class="formal-bento-code">Admin & Faculty Roles</span>
                     </div>
                 </div>
 
-                <!-- Quality badges -->
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="quality-tag"><i class="bi bi-shield-check text-success"></i> RBAC Security</span>
-                    <span class="quality-tag"><i class="bi bi-graph-up-arrow text-info"></i> Chart.js Analytics</span>
-                    <span class="quality-tag"><i class="bi bi-arrow-repeat text-primary"></i> Self-Healing Metrics</span>
-                    <span class="quality-tag"><i class="bi bi-lightning-charge-fill text-warning"></i> Sub-Second Processing</span>
+                <!-- Formal Telemetry Bar -->
+                <div class="formal-telemetry-bar">
+                    <div>
+                        <i class="bi bi-shield-check text-success me-1"></i> Status: <strong class="text-dark">Operational</strong>
+                    </div>
+                    <div>
+                        <i class="bi bi-database-check text-primary me-1"></i> Data: <strong class="text-dark">PostgreSQL / SQLite</strong>
+                    </div>
+                    <div>
+                        <i class="bi bi-lightning-charge text-warning me-1"></i> Dispatch: <strong class="text-dark">Brevo Mail Active</strong>
+                    </div>
                 </div>
             </div>
 
             <!-- ==============================================
-                 RIGHT COLUMN: LIGHT GLASSMORPHISM LOGIN FORM
+                 RIGHT COLUMN: FORMAL LIGHT LOGIN CARD
                  ============================================== -->
-            <div class="col-lg-5 col-md-8 mx-auto">
-                <div class="glass-card p-4 p-md-5">
-                    <div class="text-center mb-4">
-                        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle p-3 mb-3" style="border: 1px solid rgba(79, 70, 229, 0.25); box-shadow: 0 0 15px rgba(79, 70, 229, 0.15);">
-                            <i class="bi bi-shield-lock-fill fs-3 text-primary"></i>
+            <div class="col-lg-5 col-md-9 mx-auto">
+                <div class="formal-login-card">
+                    <div class="formal-card-header">
+                        <div class="formal-crest-icon">
+                            <i class="bi bi-shield-lock-fill"></i>
                         </div>
-                        <h2 class="fw-bold text-dark mb-1">Welcome Back</h2>
-                        <p class="text-muted small mb-0">Sign in to access UNNATI Portal</p>
+                        <h2 class="formal-card-title">Portal Access</h2>
+                        <p class="formal-card-sub">Sign in with institutional credentials</p>
                     </div>
 
                     <form method="POST" action="{{ url_for('main.login') }}" id="loginForm">
                         <!-- Email Input -->
-                        <div class="mb-3">
-                            <label for="email" class="form-label text-dark small fw-semibold">Email Address</label>
-                            <div class="input-group">
-                                <span class="input-group-text input-group-text-glass">
-                                    <i class="bi bi-envelope-at-fill"></i>
-                                </span>
-                                <input type="email" class="form-control custom-form-control" id="email" name="email" 
+                        <div class="formal-form-group">
+                            <label for="email" class="formal-input-label">Email Address</label>
+                            <div class="formal-input-wrapper">
+                                <i class="bi bi-envelope-at-fill formal-input-icon"></i>
+                                <input type="email" class="form-control formal-control" id="email" name="email" 
                                        placeholder="name@institution.edu" required autocomplete="email">
                             </div>
                         </div>
 
                         <!-- Password Input -->
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="password" class="form-label text-dark small fw-semibold mb-0">Password</label>
-                            </div>
-                            <div class="input-group">
-                                <span class="input-group-text input-group-text-glass">
-                                    <i class="bi bi-key-fill"></i>
-                                </span>
-                                <input type="password" class="form-control custom-form-control" id="password" name="password" 
-                                       placeholder="••••••••" required autocomplete="current-password">
-                                <button class="btn btn-outline-secondary input-group-text-glass" type="button" id="togglePasswordBtn" style="border-left: none !important; border-radius: 0 0.85rem 0.85rem 0 !important;">
+                        <div class="formal-form-group">
+                            <label for="password" class="formal-input-label">Password</label>
+                            <div class="formal-input-wrapper">
+                                <i class="bi bi-key-fill formal-input-icon"></i>
+                                <input type="password" class="form-control formal-control" id="password" name="password" 
+                                       placeholder="••••••••••••" required autocomplete="current-password">
+                                <button class="formal-pwd-toggle" type="button" id="togglePasswordBtn" title="Toggle password view">
                                     <i class="bi bi-eye" id="togglePasswordIcon"></i>
                                 </button>
                             </div>
                         </div>
 
+                        
+
                         <!-- Submit Button -->
-                        <button type="submit" class="btn btn-glow-submit w-100 py-3 mb-2">
+                        <button type="submit" class="btn-formal-submit">
                             <i class="bi bi-box-arrow-in-right me-2"></i> Authenticate & Enter
                         </button>
                     </form>
+
+                    <!-- Formal Card Footer -->
+                    <div class="formal-footer-text">
+                        <i class="bi bi-lock-fill text-success me-1"></i> 256-Bit SSL Encrypted • Official Academic System
+                    </div>
                 </div>
 
-                <!-- Footer branding footnote for mobile -->
+                <!-- Mobile Footnote -->
                 <div class="text-center mt-3 text-muted small d-lg-none">
-                    <p class="mb-0"><strong>UNNATI</strong>: Unified Network for Nurturing Academic Talent & Improvement</p>
+                    <p class="mb-0"><strong>UNNATI </strong> • Cooch Behar Government Engineering College</p>
                 </div>
             </div>
         </div>
@@ -501,12 +784,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleIcon = document.getElementById('togglePasswordIcon');
 
     if (toggleBtn && passwordInput && toggleIcon) {
-        toggleBtn.addEventListener('click', function() {
+        toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
             const isPassword = passwordInput.getAttribute('type') === 'password';
             passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-            toggleIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+            toggleIcon.className = isPassword ? 'bi bi-eye-slash text-primary' : 'bi bi-eye';
         });
     }
 });
+
+// Quick Autofill Function for Demo/Testing
+function autofillCreds(email, password) {
+    const emailInput = document.getElementById('email');
+    const pwdInput = document.getElementById('password');
+    
+    if (emailInput && pwdInput) {
+        emailInput.value = email;
+        pwdInput.value = password;
+        
+        emailInput.style.borderColor = '#2563eb';
+        pwdInput.style.borderColor = '#2563eb';
+        setTimeout(() => {
+            emailInput.style.borderColor = '';
+            pwdInput.style.borderColor = '';
+        }, 600);
+    }
+}
 </script>
 {% endblock %}

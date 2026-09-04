@@ -25,7 +25,7 @@ def send_remedial_notification(faculty_email, student_name, subject, marks, reme
         print("[Mail Service] ERROR: BREVO_API_KEY environment variable is not set!")
         return
 
-    sender_email = os.environ.get('SENDER_EMAIL', 'adityava49cse@gmail.com')
+    sender_email = os.environ.get('SENDER_EMAIL', 'adityavaganguly@gmail.com')
 
     # Prepare Brevo API payload
     payload = {
@@ -78,7 +78,7 @@ def send_remedial_batch_notification(faculty_email, assignment_name, subject, st
         print("[Mail Service] ERROR: BREVO_API_KEY environment variable is not set!")
         return
 
-    sender_email = os.environ.get('SENDER_EMAIL', 'adityava49cse@gmail.com')
+    sender_email = os.environ.get('SENDER_EMAIL', 'adityavaganguly@gmail.com')
 
     # Build the slow-learner student table rows
     student_rows = ""
