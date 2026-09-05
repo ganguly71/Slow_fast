@@ -61,6 +61,9 @@
           -webkit-mask:
             repeating-linear-gradient(90deg,#000 0 4px,#0000 0 20px) 8px 0,
             radial-gradient(farthest-side,#000 90%,#0000) left bottom/20px 20px repeat-x;
+          mask:
+            repeating-linear-gradient(90deg,#000 0 4px,#0000 0 20px) 8px 0,
+            radial-gradient(farthest-side,#000 90%,#0000) left bottom/20px 20px repeat-x;
         }
         .loader::after {
           flex: 1;
@@ -81,22 +84,28 @@
           left: 0;
           width: 100vw;
           height: 100vh;
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(3px);
-          z-index: 9999;
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(4px);
+          z-index: 99999;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .loader-overlay.hidden {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<!-- Global Interval / Async Loader Overlay -->
-<div id="globalIntervalLoader" class="loader-overlay d-none">
+<!-- Global Interval / Page Load Loader Overlay -->
+<div id="globalIntervalLoader" class="loader-overlay">
     <div class="loader"></div>
-    <p class="mt-3 fw-bold text-secondary" id="globalLoaderText">Loading...</p>
+    <p class="mt-3 fw-bold text-dark" id="globalLoaderText">Loading...</p>
 </div>
 
 <nav class="navbar navbar-expand-lg navbar-dark navbar-dark-orange">
@@ -177,13 +186,35 @@
         const loader = document.getElementById('globalIntervalLoader');
         const loaderText = document.getElementById('globalLoaderText');
         if (loaderText) loaderText.textContent = text;
-        if (loader) loader.classList.remove('d-none');
+        if (loader) {
+            loader.classList.remove('hidden');
+        }
     }
 
     function hideGlobalLoader() {
         const loader = document.getElementById('globalIntervalLoader');
-        if (loader) loader.classList.add('d-none');
+        if (loader) {
+            loader.classList.add('hidden');
+        }
     }
+
+    // Auto-hide loader after page finishes loading
+    window.addEventListener('load', function() {
+        setTimeout(hideGlobalLoader, 300);
+    });
+
+    // Also hide on DOMContentLoaded as fallback
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(hideGlobalLoader, 500);
+    });
+
+    // Show loader automatically on form submissions
+    document.addEventListener('submit', function(e) {
+        showGlobalLoader('Processing request...');
+    });
+
+    window.showGlobalLoader = showGlobalLoader;
+    window.hideGlobalLoader = hideGlobalLoader;
 </script>
 </body>
 </html>
