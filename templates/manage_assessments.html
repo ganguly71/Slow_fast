@@ -277,10 +277,8 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="statsModalBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+                <div class="text-center py-4 d-flex flex-column align-items-center">
+                    <div class="loader mb-2"></div>
                     <p class="mt-2 text-muted">Loading statistics...</p>
                 </div>
             </div>
@@ -517,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function showAssignmentStats(groupId) {
     const modal = new bootstrap.Modal(document.getElementById('assignmentStatsModal'));
     const body = document.getElementById('statsModalBody');
-    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Loading statistics...</p></div>';
+    body.innerHTML = '<div class="text-center py-4 d-flex flex-column align-items-center"><div class="loader mb-2"></div><p class="mt-2 text-muted">Loading statistics...</p></div>';
     modal.show();
 
     fetch('/api/assignment_stats/' + groupId)
